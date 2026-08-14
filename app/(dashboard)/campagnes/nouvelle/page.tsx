@@ -70,7 +70,8 @@ export default function NouvelleCampagnePage() {
 
   const checkWhatsAppStatus = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/status', { cache: 'no-store' });
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const res = await fetch(`${apiUrl}/api/status`, { cache: 'no-store' });
       const data = await res.json();
       setIsConnected(data.connected);
       if (data.user) {
@@ -201,7 +202,8 @@ export default function NouvelleCampagnePage() {
       // ENVOI D'UN STATUT WHATSAPP (Un seul appel API pour tout le groupe)
       const phones = targetContacts.map(c => c.phone);
       try {
-        const res = await fetch('http://localhost:3001/api/send-status', {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const res = await fetch(`${apiUrl}/api/send-status`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -236,7 +238,8 @@ export default function NouvelleCampagnePage() {
         const personalizedMessage = message.replace(/\{\{\s*nom\s*\}\}/gi, contactName);
 
         try {
-          const res = await fetch('http://localhost:3001/api/send', {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+          const res = await fetch(`${apiUrl}/api/send`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

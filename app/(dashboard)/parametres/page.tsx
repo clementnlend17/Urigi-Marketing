@@ -24,7 +24,8 @@ export default function SettingsPage() {
 
   const checkWhatsAppStatus = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/status', { cache: 'no-store' });
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const res = await fetch(`${apiUrl}/api/status`, { cache: 'no-store' });
       const data = await res.json();
       setIsWhatsAppConnected(data.connected);
       if (data.connected) {
@@ -38,7 +39,8 @@ export default function SettingsPage() {
 
   const fetchQRCode = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/qr', { cache: 'no-store' });
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const res = await fetch(`${apiUrl}/api/qr`, { cache: 'no-store' });
       const data = await res.json();
       if (data.qr) {
         setQrCodeData(data.qr);
@@ -71,7 +73,8 @@ export default function SettingsPage() {
     if (!phoneNumber) return alert("Veuillez entrer un numéro de téléphone");
     setIsRequestingCode(true);
     try {
-      const res = await fetch('http://localhost:3001/api/pair', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const res = await fetch(`${apiUrl}/api/pair`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: phoneNumber })
@@ -91,7 +94,8 @@ export default function SettingsPage() {
 
   const handleDisconnectWhatsApp = async () => {
     try {
-      await fetch('http://localhost:3001/api/logout', { method: 'POST' });
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      await fetch(`${apiUrl}/api/logout`, { method: 'POST' });
       setIsWhatsAppConnected(false);
       setQrCodeData(null);
     } catch (e) {
