@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { MessageCircle, Zap, PlayCircle, ArrowRight, TimerOff, SendOff, UserX, Target, Settings, Layers, Rocket } from 'lucide-react';
+import { MessageCircle, Zap, PlayCircle, ArrowRight, TimerOff, MessageSquareOff, UserX, Target, Settings, Layers, Rocket } from 'lucide-react';
 
 export default function LandingPage() {
   const fadeUpVariant = {
@@ -148,7 +148,7 @@ export default function LandingPage() {
           >
             {[
               { title: "Perte de temps", desc: "Passer des heures à copier-coller des messages est épuisant et non scalable.", icon: <TimerOff className="w-6 h-6 text-red-500" />, bg: "bg-red-50" },
-              { title: "Messages un par un", desc: "L'envoi individuel limite drastiquement votre portée quotidienne.", icon: <SendOff className="w-6 h-6 text-orange-500" />, bg: "bg-orange-50" },
+              { title: "Messages un par un", desc: "L'envoi individuel limite drastiquement votre portée quotidienne.", icon: <MessageSquareOff className="w-6 h-6 text-orange-500" />, bg: "bg-orange-50" },
               { title: "Aucun suivi CRM", desc: "Difficile de savoir qui a répondu, cliqué ou acheté sans outil dédié.", icon: <UserX className="w-6 h-6 text-purple-500" />, bg: "bg-purple-50" },
               { title: "Ciblage impossible", desc: "Envoyer le même message à tout le monde détruit votre taux de conversion.", icon: <Target className="w-6 h-6 text-blue-500" />, bg: "bg-blue-50" }
             ].map((feature, i) => (
