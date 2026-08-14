@@ -77,7 +77,7 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
             {isNotificationsOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setIsNotificationsOpen(false)}></div>
-                <div className="absolute right-0 z-20 mt-2 w-80 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <div className="absolute -right-16 sm:right-0 z-20 mt-2 w-72 sm:w-80 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                   <div className="px-4 py-2 border-b border-gray-100">
                     <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
                   </div>

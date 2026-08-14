@@ -156,11 +156,13 @@ export default function ContactsPage() {
 
   const handleCreateGroup = async () => {
     if (!newGroupName.trim()) {
-      alert("Le nom du groupe est obligatoire.");
+      setGrabberToastMsg("Le nom du groupe est obligatoire.");
+      setTimeout(() => setGrabberToastMsg(""), 3000);
       return;
     }
     if (groupSelectedContacts.size === 0) {
-      alert("Veuillez sélectionner au moins un contact pour ce groupe.");
+      setGrabberToastMsg("Veuillez sélectionner au moins un contact pour ce groupe.");
+      setTimeout(() => setGrabberToastMsg(""), 3000);
       return;
     }
 
@@ -195,7 +197,8 @@ export default function ContactsPage() {
 
   const handleEditGroup = async () => {
     if (!editedGroupName.trim()) {
-      alert("Le nom du groupe est obligatoire.");
+      setGrabberToastMsg("Le nom du groupe est obligatoire.");
+      setTimeout(() => setGrabberToastMsg(""), 3000);
       return;
     }
     if (editedGroupName === groupToEdit) {

@@ -272,7 +272,10 @@ export default function SettingsPage() {
                   <p className="text-sm text-gray-600 mb-5 leading-relaxed">
                     Ajoutez une couche de sécurité supplémentaire à votre compte en exigeant plus qu'un simple mot de passe pour vous connecter. Cela protègera vos listes de contacts.
                   </p>
-                  <button className="px-5 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 shadow-sm transition-colors">
+                  <button 
+                    onClick={() => alert("L'authentification 2FA sera disponible dans la prochaine version pro.")}
+                    className="px-5 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 shadow-sm transition-colors"
+                  >
                     Activer la 2FA par SMS
                   </button>
                 </div>
@@ -397,16 +400,16 @@ export default function SettingsPage() {
                   <h3 className="font-medium text-gray-900">Clé API Principale</h3>
                   <button className="text-sm text-primary font-medium hover:text-primary-hover">Régénérer la clé</button>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input 
                     type="password" 
                     value="sk_live_urigi_9876543210qwertyuiop" 
-                    className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-white" 
+                    className="flex-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-white" 
                     readOnly 
                   />
                   <button 
                     onClick={handleCopyApiKey}
-                    className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+                    className="w-full sm:w-auto px-4 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
                   >
                     Copier
                   </button>

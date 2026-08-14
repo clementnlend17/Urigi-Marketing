@@ -351,22 +351,22 @@ export default function NouvelleCampagnePage() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/campagnes" className="p-2 -ml-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <Link href="/campagnes" className="p-2 -ml-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Nouvelle Campagne</h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">Nouvelle Campagne</h1>
+            <p className="mt-1 text-xs sm:text-sm text-gray-500 hidden sm:block">
               Configurez et envoyez une nouvelle campagne WhatsApp.
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 self-end sm:self-auto w-full sm:w-auto">
           <button 
             onClick={saveDraft}
-            className="inline-flex items-center gap-x-2 rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50"
+            className="flex-1 sm:flex-none inline-flex justify-center items-center gap-x-2 rounded-md bg-white px-3 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50"
           >
             <Save className="-ml-0.5 h-4 w-4 text-gray-400" />
             Brouillon
@@ -374,10 +374,10 @@ export default function NouvelleCampagnePage() {
           <button 
             onClick={startCampaign}
             disabled={isSending}
-            className="inline-flex items-center gap-x-2 rounded-md bg-primary px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover transition-colors disabled:opacity-50"
+            className="flex-1 sm:flex-none inline-flex justify-center items-center gap-x-2 rounded-md bg-primary px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover transition-colors disabled:opacity-50"
           >
             <Send className="-ml-0.5 h-4 w-4" />
-            Lancer la campagne
+            Lancer
           </button>
         </div>
       </div>
