@@ -1,11 +1,27 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Zap, PlayCircle, ArrowRight, TimerOff, MessageSquareOff, UserX, Target, Settings, Layers, Rocket } from 'lucide-react';
 
+const carouselImages = [
+  "/images/dashboard-preview.jpg",
+  "/images/dashboard-man.jpg",
+  "/images/dashboard-woman.jpg"
+];
+
 export default function LandingPage() {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % carouselImages.length);
+    }, 4000); // Change image every 4 seconds
+    return () => clearInterval(interval);
+  }, []);
+
   const fadeUpVariant = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
@@ -108,15 +124,25 @@ export default function LandingPage() {
                   </div>
                   <div className="flex-1 text-center text-xs font-medium text-gray-400">app.urigi.com</div>
                 </div>
-                {/* Fallback styling in case image doesn't load immediately */}
-                <div className="aspect-[4/3] bg-gray-100 relative">
-                  <Image 
-                    src="/images/dashboard-preview.jpg" 
-                    alt="Urigi Marketing Pro Dashboard" 
-                    fill 
-                    className="object-cover"
-                    priority
-                  />
+                <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={currentImageIndex}
+                      initial={{ opacity: 0, scale: 1.05 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.8, ease: "easeInOut" }}
+                      className="absolute inset-0"
+                    >
+                      <Image 
+                        src={carouselImages[currentImageIndex]} 
+                        alt={`Urigi Marketing Pro Preview ${currentImageIndex + 1}`}
+                        fill 
+                        className="object-cover"
+                        priority={currentImageIndex === 0}
+                      />
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
               </div>
             </motion.div>
