@@ -277,5 +277,5 @@ app.post('/api/send-status', async (req, res) => {
     }
 });
 
-const PORT = 3001;
-app.listen(PORT, () => console.log(`Le moteur WhatsApp tourne sur http://localhost:${PORT}`));
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log(`Le moteur WhatsApp tourne sur le port ${PORT}`));
