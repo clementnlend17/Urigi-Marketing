@@ -7,14 +7,15 @@ import { useState } from "react";
 export default function AbonnementPage() {
   const [isLoading, setIsLoading] = useState(false);
   
-  // URL de paiement Chariow (à remplacer par celle fournie par l'utilisateur)
-  const chariowPaymentLink = "#"; 
+  // URL de paiement Chariow (fournie par l'utilisateur)
+  const chariowPaymentLink = "https://jkqiujbo.mychariow.shop/prd_aq47y1ec"; 
 
   const handleSubscribe = (planId: string) => {
     setIsLoading(true);
     // Redirection vers la page de paiement Chariow selon le plan
     if (chariowPaymentLink !== "#") {
-      window.location.href = chariowPaymentLink + "?plan=" + planId;
+      // Dans le cas de Chariow (lien statique), on redirige simplement vers le lien
+      window.location.href = chariowPaymentLink;
     } else {
       alert("Les liens de paiement sont en cours de configuration.");
       setIsLoading(false);
@@ -74,7 +75,7 @@ export default function AbonnementPage() {
             </div>
             <h3 className="text-xl font-semibold text-primary">Plan Pro</h3>
             <div className="mt-4 flex items-baseline text-4xl font-extrabold text-gray-900">
-              15 000 FCFA
+              4 999 FCFA
               <span className="ml-1 text-xl font-medium text-gray-500">/mois</span>
             </div>
             <p className="mt-4 text-gray-600">Pour automatiser vos ventes.</p>
