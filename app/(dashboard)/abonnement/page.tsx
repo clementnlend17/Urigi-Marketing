@@ -7,17 +7,20 @@ import { useState } from "react";
 export default function AbonnementPage() {
   const [isLoading, setIsLoading] = useState(false);
   
-  // URL de paiement Chariow (fournie par l'utilisateur)
-  const chariowPaymentLink = "https://jkqiujbo.mychariow.shop/prd_aq47y1ec"; 
+  // Liens de paiement Chariow
+  const chariowLinks: Record<string, string> = {
+    pro: "https://jkqiujbo.mychariow.shop/prd_aq47y1ec",
+    elite: "https://jkqiujbo.mychariow.shop/prd_jmc3wfol"
+  };
 
   const handleSubscribe = (planId: string) => {
     setIsLoading(true);
-    // Redirection vers la page de paiement Chariow selon le plan
-    if (chariowPaymentLink !== "#") {
-      // Dans le cas de Chariow (lien statique), on redirige simplement vers le lien
-      window.location.href = chariowPaymentLink;
+    const link = chariowLinks[planId];
+    
+    if (link) {
+      window.location.href = link;
     } else {
-      alert("Les liens de paiement sont en cours de configuration.");
+      alert("Ce plan n'est pas encore disponible.");
       setIsLoading(false);
     }
   };
