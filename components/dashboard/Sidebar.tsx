@@ -13,8 +13,8 @@ const navigation = [
 ];
 
 const settings = [
+  { name: "Abonnement Pro", href: "/abonnement", icon: CreditCard },
   { name: "Paramètres", href: "/parametres", icon: Settings },
-  { name: "Facturation", href: "/parametres/facturation", icon: CreditCard },
   { name: "Aide & Support", href: "/support", icon: HelpCircle },
 ];
 
