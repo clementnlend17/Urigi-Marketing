@@ -20,21 +20,18 @@ export async function POST(req: Request) {
     }
 
     // Appel à l'API Chariow pour valider la clé
-    const chariowRes = await fetch("https://api.chariow.com/v1/licenses/validate", {
-      method: "POST",
+    const chariowRes = await fetch(`https://api.chariow.com/v1/licenses/validate?license_key=${license_key}`, {
+      method: "GET",
       headers: {
-        "Content-Type": "application/json",
         "Authorization": `Bearer ${CHARIOW_SECRET_KEY}`
-      },
-      body: JSON.stringify({ license_key })
+      }
     });
 
     const data = await chariowRes.json();
     console.log("Réponse validation Chariow:", JSON.stringify(data));
 
     // Vérification de la validité
-    // On s'adapte aux formats communs (data.valid, valid, data.meta.valid...)
-    const isValid = data.valid || data.data?.valid || data.meta?.valid || (chariowRes.ok && data.license_key);
+    const isValid = (chariowRes.ok && data.valid !== false) || data.valid === true || data.data?.valid === true;
 
     if (!isValid) {
       console.error("Clé invalide, voici ce que Chariow a répondu:", JSON.stringify(data));
