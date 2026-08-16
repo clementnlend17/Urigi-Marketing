@@ -49,9 +49,15 @@ export default function AbonnementPage() {
       return;
     }
 
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData?.user?.id || "";
+
     const link = chariowLinks[planId];
     if (link) {
-      window.location.href = link;
+      // Append tracking parameters so Chariow can pass it back to our Webhook
+      const trackingParams = `client_reference_id=${userId}&custom=${userId}&custom_id=${userId}`;
+      const finalLink = link.includes('?') ? `${link}&${trackingParams}` : `${link}?${trackingParams}`;
+      window.location.href = finalLink;
     } else {
       toast.error("Ce plan n'est pas encore disponible.");
       setIsLoading(false);
