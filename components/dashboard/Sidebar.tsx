@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { getUserPlan } from "@/lib/limits";
 import { useState, useEffect } from "react";
+import { ShieldCheck } from "lucide-react";
 
 const navigation = [
   { name: "Vue d'ensemble", href: "/dashboard", icon: LayoutDashboard },
@@ -32,11 +33,13 @@ interface SidebarProps {
 export function Sidebar({ className, isOpen, setIsOpen }: SidebarProps) {
   const currentPath = usePathname() || "/dashboard"; 
   const [userPlan, setUserPlan] = useState<string>("Chargement...");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const fetchPlan = async () => {
       const { data } = await supabase.auth.getUser();
       if (data.user) {
+        if (data.user.email === 'freddynlend7@gmail.com') setIsAdmin(true);
         const plan = await getUserPlan(data.user.id);
         setUserPlan(`Plan ${plan.charAt(0).toUpperCase() + plan.slice(1)}`);
       } else {
@@ -136,6 +139,22 @@ export function Sidebar({ className, isOpen, setIsOpen }: SidebarProps) {
                   </li>
                 );
               })}
+              
+              {isAdmin && (
+                <li>
+                  <Link
+                    href="/admin"
+                    onClick={() => setIsOpen?.(false)}
+                    className={cn(
+                      "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-medium text-red-600 hover:text-red-700 hover:bg-red-50",
+                      currentPath === "/admin" && "bg-red-50 text-red-700"
+                    )}
+                  >
+                    <ShieldCheck className="h-5 w-5 shrink-0" aria-hidden="true" />
+                    Administration
+                  </Link>
+                </li>
+              )}
             </ul>
           </div>
         </nav>

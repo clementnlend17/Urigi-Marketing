@@ -82,24 +82,23 @@ export default function AbonnementPage() {
         return;
       }
 
-      const res = await fetch("/api/activate-license", {
+      const res = await fetch("/api/submit-license", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ license_key: licenseKey.trim(), userId: userData.user.id })
+        body: JSON.stringify({ 
+          license_key: licenseKey.trim(), 
+          userId: userData.user.id,
+          userEmail: userData.user.email 
+        })
       });
 
       const data = await res.json();
       
       if (res.ok && data.success) {
-        toast.success(`Succès ! Votre abonnement ${data.planTier.toUpperCase()} est activé. Rechargez la page.`);
+        toast.success(`Votre clé a été envoyée ! Elle sera validée par un administrateur dans quelques minutes.`);
         setLicenseKey("");
       } else {
-        if (data.debugInfo) {
-          console.error("Debug Chariow:", data.debugInfo);
-          toast.error(`Erreur: ${JSON.stringify(data.debugInfo).substring(0, 50)}... Regardez la console F12.`);
-        } else {
-          toast.error(data.error || "Clé de licence invalide.");
-        }
+        toast.error(data.error || "Une erreur est survenue.");
       }
     } catch (error) {
       toast.error("Une erreur s'est produite lors de la validation.");

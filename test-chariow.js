@@ -14,16 +14,14 @@ async function test() {
   });
   console.log("GET Status:", res1.status, await res1.text());
 
-  console.log("--- Testing POST /v1/licenses/verify ---");
-  const res2 = await fetch("https://api.chariow.com/v1/licenses/verify", {
-    method: "POST",
+  console.log("--- Testing GET /v1/licenses/:id ---");
+  const res3 = await fetch(`https://api.chariow.com/v1/licenses/${license_key}`, {
+    method: "GET",
     headers: {
-      "Content-Type": "application/json",
       "Authorization": `Bearer ${CHARIOW_SECRET_KEY}`
-    },
-    body: JSON.stringify({ license_key })
+    }
   });
-  console.log("POST Status:", res2.status, await res2.text());
+  console.log("GET /v1/licenses/:id Status:", res3.status, await res3.text());
 }
 
 test();
