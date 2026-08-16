@@ -49,9 +49,13 @@ export default function AdminPage() {
   };
 
   const handleApprove = async (requestId: string, userId: string, planTier: string) => {
+    const { data: sessionData } = await supabase.auth.getSession();
     const res = await fetch('/api/admin/approve-license', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionData.session?.access_token || ''}`
+      },
       body: JSON.stringify({ requestId, userId, planTier, action: 'approve' })
     });
     
@@ -64,9 +68,13 @@ export default function AdminPage() {
   };
 
   const handleReject = async (requestId: string) => {
+    const { data: sessionData } = await supabase.auth.getSession();
     const res = await fetch('/api/admin/approve-license', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionData.session?.access_token || ''}`
+      },
       body: JSON.stringify({ requestId, action: 'reject' })
     });
     

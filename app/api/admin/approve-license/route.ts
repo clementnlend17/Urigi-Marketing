@@ -2,15 +2,14 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export async function POST(req: Request) {
   try {
-    // Basic auth check via headers if possible, or just rely on RLS/admin check
-    // Since this is a server action, it's better to verify the token, but we will trust the payload for now 
-    // in this MVP since the URL is hidden and we should ideally pass the JWT.
-    // For production, always verify `supabase.auth.getUser(token)`
+    const authHeader = req.headers.get('authorization');
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader || '' } }
+    });
     
     const { requestId, userId, planTier, action } = await req.json();
 

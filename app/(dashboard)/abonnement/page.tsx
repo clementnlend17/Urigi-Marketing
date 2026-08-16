@@ -82,9 +82,14 @@ export default function AbonnementPage() {
         return;
       }
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      
       const res = await fetch("/api/submit-license", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${sessionData.session?.access_token || ''}`
+        },
         body: JSON.stringify({ 
           license_key: licenseKey.trim(), 
           userId: userData.user.id,
