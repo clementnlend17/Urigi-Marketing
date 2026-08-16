@@ -37,7 +37,11 @@ export async function POST(req: Request) {
     const isValid = data.valid || data.data?.valid || data.meta?.valid || (chariowRes.ok && data.license_key);
 
     if (!isValid) {
-      return NextResponse.json({ error: "Clé de licence invalide, expirée ou introuvable." }, { status: 400 });
+      console.error("Clé invalide, voici ce que Chariow a répondu:", JSON.stringify(data));
+      return NextResponse.json({ 
+        error: "Clé de licence invalide.",
+        debugInfo: data 
+      }, { status: 400 });
     }
 
     // Tenter de déduire le plan

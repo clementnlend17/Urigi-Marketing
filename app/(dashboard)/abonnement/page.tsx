@@ -94,7 +94,12 @@ export default function AbonnementPage() {
         toast.success(`Succès ! Votre abonnement ${data.planTier.toUpperCase()} est activé. Rechargez la page.`);
         setLicenseKey("");
       } else {
-        toast.error(data.error || "Clé de licence invalide.");
+        if (data.debugInfo) {
+          console.error("Debug Chariow:", data.debugInfo);
+          toast.error(`Erreur: ${JSON.stringify(data.debugInfo).substring(0, 50)}... Regardez la console F12.`);
+        } else {
+          toast.error(data.error || "Clé de licence invalide.");
+        }
       }
     } catch (error) {
       toast.error("Une erreur s'est produite lors de la validation.");
