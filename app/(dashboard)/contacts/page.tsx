@@ -1,8 +1,10 @@
 "use client";
 
+import { toast } from 'react-hot-toast';
 import { useState, useEffect } from "react";
-import { ArrowLeft, Save, Send, CheckCircle, AlertCircle, Loader2, Bold, Italic, Strikethrough, Link as LinkIcon, Image as ImageIcon, User, Users, DownloadCloud, X, Plus, Search, Filter, MoreVertical, Upload, Pencil } from "lucide-react";
+import { ArrowLeft, Save, Send, CheckCircle, AlertCircle, Loader2, Bold, Italic, Strikethrough, Link as LinkIcon, Image as ImageIcon, User, Users, DownloadCloud, X, Plus, Search, Filter, MoreVertical, Upload, Pencil, Trash2 } from "lucide-react";
 import { GroupGrabberModal } from "@/components/dashboard/GroupGrabberModal";
+import { ManualMessageModal } from "@/components/dashboard/ManualMessageModal";
 import { supabase } from "@/lib/supabase";
 
 interface Contact {
@@ -35,6 +37,10 @@ export default function ContactsPage() {
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
+  // Manual message
+  const [isManualMessageOpen, setIsManualMessageOpen] = useState(false);
+  const [contactToMessage, setContactToMessage] = useState<Contact | null>(null);
+
   // Filter State
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState("recent"); // 'recent' | 'oldest'
@@ -57,6 +63,10 @@ export default function ContactsPage() {
   const [groupToEdit, setGroupToEdit] = useState("");
   const [editedGroupName, setEditedGroupName] = useState("");
 
+  // Delete Group Modal
+  const [isDeleteGroupModalOpen, setIsDeleteGroupModalOpen] = useState(false);
+  const [groupToDelete, setGroupToDelete] = useState<string | null>(null);
+
   useEffect(() => {
     fetchContacts();
   }, []);
@@ -74,13 +84,13 @@ export default function ContactsPage() {
 
   const handleSaveContact = async () => {
     if (!newPhone) {
-      alert("Le numéro de téléphone est obligatoire.");
+      toast.error("Le numéro de téléphone est obligatoire.");
       return;
     }
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      alert("Erreur: Utilisateur non authentifié.");
+      toast.error("Erreur: Utilisateur non authentifié.");
       return;
     }
 
@@ -99,7 +109,7 @@ export default function ContactsPage() {
         .select();
 
       if (error) {
-        alert("Erreur Supabase: " + error.message);
+        toast.error("Erreur Supabase: " + error.message);
         return;
       }
 
@@ -125,7 +135,7 @@ export default function ContactsPage() {
         .select();
 
       if (error) {
-        alert("Erreur Supabase: " + error.message);
+        toast.error("Erreur Supabase: " + error.message);
         return;
       }
 
@@ -225,6 +235,35 @@ export default function ContactsPage() {
     fetchContacts();
   };
 
+  const confirmDeleteGroup = (groupToDel: string) => {
+    setGroupToDelete(groupToDel);
+    setIsDeleteGroupModalOpen(true);
+  };
+
+  const executeDeleteGroup = async () => {
+    if (!groupToDelete) return;
+    setIsDeleting(true);
+    
+    const contactsToUpdate = contacts.filter(c => c.tags && c.tags.includes(groupToDelete));
+    
+    const updates = contactsToUpdate.map(async (contact) => {
+      const newTags = contact.tags.filter(t => t !== groupToDelete);
+      await supabase.from('contacts').update({ tags: newTags }).eq('id', contact.id);
+    });
+
+    await Promise.all(updates);
+    
+    toast.success(`Groupe "${groupToDelete}" supprimé avec succès.`);
+    
+    if (activeGroup === groupToDelete) {
+      setActiveGroup("all");
+    }
+    fetchContacts();
+    setIsDeleteGroupModalOpen(false);
+    setGroupToDelete(null);
+    setIsDeleting(false);
+  };
+
   const handleDeleteContact = async () => {
     if (!contactToDelete) return;
     setIsDeleting(true);
@@ -235,7 +274,7 @@ export default function ContactsPage() {
       .eq('id', contactToDelete);
 
     if (error) {
-      alert("Erreur lors de la suppression : " + error.message);
+      toast.error("Erreur lors de la suppression : " + error.message);
       setIsDeleting(false);
       return;
     }
@@ -261,7 +300,7 @@ export default function ContactsPage() {
       .in('id', idsToDelete);
 
     if (error) {
-      alert("Erreur lors de la suppression groupée : " + error.message);
+      toast.error("Erreur lors de la suppression groupée : " + error.message);
       setIsDeleting(false);
       return;
     }
@@ -308,7 +347,7 @@ export default function ContactsPage() {
         
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          alert("Vous devez être connecté.");
+          toast.error("Vous devez être connecté.");
           setIsImporting(false);
           return;
         }
@@ -335,11 +374,11 @@ export default function ContactsPage() {
           setTimeout(() => setGrabberToastMsg(""), 4000);
           fetchContacts(); // Recharger la liste
         } else {
-          alert("Aucun contact valide trouvé dans le fichier.");
+          toast.error("Aucun contact valide trouvé dans le fichier.");
         }
       } catch (err) {
         console.error(err);
-        alert("Erreur lors de l'importation.");
+        toast.error("Erreur lors de l'importation.");
       } finally {
         setIsImporting(false);
         setIsCsvModalOpen(false);
@@ -453,6 +492,13 @@ export default function ContactsPage() {
                           title="Renommer le groupe"
                         >
                           <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); confirmDeleteGroup(group); }} 
+                          className="p-1 text-gray-400 hover:text-red-500 rounded-md opacity-0 group-hover/item:opacity-100 transition-opacity"
+                          title="Supprimer le groupe"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                         <span className={`${activeGroup === group ? "bg-white/50 text-primary" : "bg-gray-100"} px-2 py-0.5 rounded-full text-xs`}>
                           {contacts.filter(c => c.tags && c.tags.includes(group)).length}
@@ -607,6 +653,16 @@ export default function ContactsPage() {
                             <>
                               <div className="fixed inset-0 z-10" onClick={() => setActiveDropdownId(null)}></div>
                               <div className="absolute right-10 top-1/2 -translate-y-1/2 z-50 w-48 rounded-md bg-white py-1 shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                <button
+                                  onClick={() => {
+                                    setContactToMessage(contact);
+                                    setIsManualMessageOpen(true);
+                                    setActiveDropdownId(null);
+                                  }}
+                                  className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors font-medium border-b border-gray-100"
+                                >
+                                  Envoyer un message
+                                </button>
                                 <button
                                   onClick={() => {
                                     setContactToDelete(contact.id);
@@ -1097,6 +1153,51 @@ export default function ContactsPage() {
           <p className="text-sm font-medium">{grabberToastMsg}</p>
         </div>
       )}
+      {/* Modale de confirmation de suppression de GROUPE */}
+      {isDeleteGroupModalOpen && (
+        <div className="fixed inset-0 z-[60] overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" onClick={() => setIsDeleteGroupModalOpen(false)} />
+            <div className="relative transform overflow-hidden rounded-xl bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:p-6">
+              <div>
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                  <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div className="mt-3 text-center sm:mt-5">
+                  <h3 className="text-base font-semibold leading-6 text-gray-900">Supprimer le groupe ?</h3>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">
+                      Vous êtes sur le point de supprimer le groupe <strong>{groupToDelete}</strong>. 
+                      <br/><br/>
+                      Ne vous inquiétez pas, <strong>aucun contact ne sera supprimé</strong>. Ils seront simplement retirés de ce groupe.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  className="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:col-start-2 disabled:opacity-50"
+                  onClick={executeDeleteGroup}
+                >
+                  {isDeleting ? "Suppression..." : "Oui, supprimer le groupe"}
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:col-start-1 sm:mt-0 disabled:opacity-50"
+                  onClick={() => setIsDeleteGroupModalOpen(false)}
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <GroupGrabberModal 
         isOpen={isGrabberModalOpen} 
@@ -1108,7 +1209,7 @@ export default function ContactsPage() {
           
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) {
-            alert("Erreur: Utilisateur non connecté.");
+            toast.error("Erreur: Utilisateur non connecté.");
             return;
           }
 
@@ -1126,9 +1227,15 @@ export default function ContactsPage() {
             setGrabberToastMsg(`${contactsToInsert.length} contacts ont été extraits et enregistrés avec succès dans votre répertoire !`);
             setTimeout(() => setGrabberToastMsg(""), 4000);
           } else {
-            alert("Erreur lors de la sauvegarde : " + error.message);
+            toast.error("Erreur lors de la sauvegarde : " + error.message);
           }
         }}
+      />
+
+      <ManualMessageModal
+        isOpen={isManualMessageOpen}
+        onClose={() => setIsManualMessageOpen(false)}
+        contact={contactToMessage}
       />
     </div>
   );

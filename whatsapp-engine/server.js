@@ -6,6 +6,7 @@ const pino = require('pino');
 const QRCode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
+const OpenAI = require('openai');
 
 const app = express();
 app.use(cors());
@@ -20,6 +21,19 @@ let currentQR = null;
 let isConnected = false;
 let user = null;
 let isConnecting = false;
+
+// Etat du chatbot
+let chatbotEnabled = false;
+let activeChatbotRules = [];
+
+// Etat de l'Agent IA
+let aiConfig = {
+    is_active: false,
+    api_key: "",
+    system_prompt: "",
+    model_name: "gpt-4o-mini"
+};
+const conversationMemory = new Map();
 
 async function connectToWhatsApp() {
     if (isConnecting) return;
@@ -51,6 +65,135 @@ async function connectToWhatsApp() {
             for (const contact of contacts) {
                 if (contact.id) {
                     contactCache[contact.id] = { ...contactCache[contact.id], ...contact };
+                }
+            }
+        });
+
+        // 🤖 CHATBOT : Écoute des messages entrants
+        sock.ev.on('messages.upsert', async ({ messages, type }) => {
+            if (type !== 'notify') return; // Ne traiter que les notifications
+            
+            const msg = messages[0];
+            
+            // Ignorer nos propres messages, les status, et les messages de groupe
+            if (!msg.message || msg.key.fromMe || msg.key.remoteJid === 'status@broadcast' || msg.key.remoteJid.endsWith('@g.us')) {
+                return;
+            }
+
+            if (!chatbotEnabled && !aiConfig.is_active) return;
+
+            // Extraire le texte du message
+            const textMessage = msg.message.conversation || msg.message.extendedTextMessage?.text;
+            if (!textMessage) return;
+            
+            // Stocker le message du client dans la mémoire
+            const jid = msg.key.remoteJid;
+            if (!conversationMemory.has(jid)) {
+                conversationMemory.set(jid, []);
+            }
+            const history = conversationMemory.get(jid);
+            history.push({ role: 'user', content: textMessage });
+            if (history.length > 20) history.shift(); // Garder 20 messages max
+
+            const textLower = textMessage.toLowerCase().trim();
+
+            let ruleMatched = false;
+
+            // Chercher une règle correspondante
+            if (chatbotEnabled && activeChatbotRules.length > 0) {
+                for (const rule of activeChatbotRules) {
+                    const keywordLower = rule.keyword.toLowerCase().trim();
+                    let isMatch = false;
+
+                    if (rule.match_type === 'exact' && textLower === keywordLower) {
+                        isMatch = true;
+                    } else if (rule.match_type === 'contains' && textLower.includes(keywordLower)) {
+                        isMatch = true;
+                    }
+
+                    if (isMatch) {
+                        ruleMatched = true;
+                        console.log(`[Chatbot] Règle déclenchée par "${textMessage}" de ${msg.key.remoteJid}`);
+                        try {
+                            // 1. Marquer le message reçu comme lu
+                            await sock.readMessages([msg.key]); 
+                            
+                            // 2. Temps de réflexion (temps avant de commencer à écrire) : 2 à 4 secondes
+                            const reflectionDelay = Math.floor(Math.random() * 2000) + 2000;
+                            await new Promise(resolve => setTimeout(resolve, reflectionDelay));
+                            
+                            // 3. Envoyer l'état "en train d'écrire..."
+                            await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
+                            
+                            // 4. Calculer un délai de frappe très réaliste (100ms par caractère)
+                            const typingSpeedMsPerChar = 100; 
+                            let typingDuration = rule.reply_text.length * typingSpeedMsPerChar;
+                            
+                            // Limiter la durée entre 4s (minimum) et 20s (maximum)
+                            typingDuration = Math.max(4000, Math.min(typingDuration, 20000));
+
+                            console.log(`[Chatbot] Simulation: Réflexion ${reflectionDelay}ms, Frappe ${typingDuration}ms pour ${msg.key.remoteJid}`);
+                            
+                            // 5. Attendre le temps de la frappe
+                            await new Promise(resolve => setTimeout(resolve, typingDuration));
+                            
+                            // 6. Arrêter l'état "en train d'écrire..."
+                            await sock.sendPresenceUpdate('paused', msg.key.remoteJid);
+                            
+                            // 7. Envoyer la réponse finale
+                            await sock.sendMessage(msg.key.remoteJid, { text: rule.reply_text });
+                            
+                            // Ajouter à la mémoire pour l'IA
+                            history.push({ role: 'assistant', content: rule.reply_text });
+                        } catch (err) {
+                            console.error("[Chatbot] Erreur d'envoi de la réponse automatique:", err);
+                        }
+                        break; // On ne déclenche qu'une seule règle par message
+                    }
+                }
+            }
+
+            // Fallback: Agent IA si aucune règle n'a matché
+            if (!ruleMatched && aiConfig.is_active && aiConfig.api_key) {
+                console.log(`[Agent IA] Traitement du message de ${jid}`);
+                try {
+                    await sock.readMessages([msg.key]);
+                    
+                    const openai = new OpenAI({ apiKey: aiConfig.api_key });
+                    
+                    const systemMsg = { role: 'system', content: aiConfig.system_prompt };
+                    
+                    // Appeler l'IA avec l'historique de la conversation
+                    const completion = await openai.chat.completions.create({
+                        model: aiConfig.model_name || "gpt-4o-mini",
+                        messages: [systemMsg, ...history],
+                        temperature: 0.7,
+                        max_tokens: 250
+                    });
+
+                    const aiReply = completion.choices[0]?.message?.content;
+                    
+                    if (aiReply) {
+                        const reflectionDelay = Math.floor(Math.random() * 2000) + 1000;
+                        await new Promise(resolve => setTimeout(resolve, reflectionDelay));
+                        
+                        await sock.sendPresenceUpdate('composing', jid);
+                        
+                        const typingSpeedMsPerChar = 100;
+                        let typingDuration = aiReply.length * typingSpeedMsPerChar;
+                        typingDuration = Math.max(3000, Math.min(typingDuration, 15000));
+                        
+                        console.log(`[Agent IA] Simulation: Réflexion ${reflectionDelay}ms, Frappe ${typingDuration}ms pour ${jid}`);
+                        await new Promise(resolve => setTimeout(resolve, typingDuration));
+                        await sock.sendPresenceUpdate('paused', jid);
+                        
+                        await sock.sendMessage(jid, { text: aiReply });
+                        
+                        // Ajouter la réponse de l'IA à l'historique
+                        history.push({ role: 'assistant', content: aiReply });
+                    }
+                } catch(e) {
+                    console.error("[Agent IA] Erreur OpenAI:", e.message);
                 }
             }
         });
@@ -209,6 +352,23 @@ app.post('/api/send', async (req, res) => {
         console.log(`Tentative d'envoi à ${jid}...`);
         let sendResult;
         
+        // --- SIMULATION DE COMPORTEMENT HUMAIN ---
+        const typingSpeedMsPerChar = 100;
+        const textToType = message || ""; 
+        let typingDuration = Math.max(3000, Math.min(textToType.length * typingSpeedMsPerChar, 20000));
+        
+        // Délai de préparation (ouverture du chat)
+        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+        
+        // En train d'écrire...
+        await sock.sendPresenceUpdate('composing', jid);
+        
+        // Simulation de la frappe au clavier
+        await new Promise(resolve => setTimeout(resolve, typingDuration));
+        
+        // Pause... (il a fini de taper)
+        await sock.sendPresenceUpdate('paused', jid);
+        
         if (imageBase64) {
             // L'image doit être envoyée en buffer
             const buffer = Buffer.from(imageBase64, 'base64');
@@ -275,6 +435,25 @@ app.post('/api/send-status', async (req, res) => {
         console.error("Erreur d'envoi du statut:", err);
         res.status(500).json({ error: "Échec de la publication du statut" });
     }
+});
+
+app.post('/api/chatbot-config', (req, res) => {
+    const { enabled, rules } = req.body;
+    if (typeof enabled === 'boolean') {
+        chatbotEnabled = enabled;
+    }
+    if (Array.isArray(rules)) {
+        activeChatbotRules = rules;
+    }
+    console.log(`[Chatbot] Configuration mise à jour. Activé: ${chatbotEnabled}, Règles actives: ${activeChatbotRules.length}`);
+    res.json({ success: true, message: "Configuration du chatbot mise à jour." });
+});
+
+app.post('/api/ai-config', (req, res) => {
+    const { is_active, api_key, system_prompt, model_name } = req.body;
+    aiConfig = { is_active, api_key, system_prompt, model_name };
+    console.log(`[Agent IA] Configuration mise à jour. Activé: ${is_active}, Modèle: ${model_name}`);
+    res.json({ success: true, message: "Configuration de l'Agent IA mise à jour." });
 });
 
 const PORT = process.env.PORT || 3001;

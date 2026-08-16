@@ -2,13 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Megaphone, Users, LayoutTemplate, Settings, CreditCard, HelpCircle } from "lucide-react";
+import { LayoutDashboard, Megaphone, Users, LayoutTemplate, Settings, CreditCard, HelpCircle, Bot, BrainCircuit } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
+import { getUserPlan } from "@/lib/limits";
+import { useState, useEffect } from "react";
 
 const navigation = [
   { name: "Vue d'ensemble", href: "/dashboard", icon: LayoutDashboard },
   { name: "Campagnes", href: "/campagnes", icon: Megaphone },
   { name: "Contacts", href: "/contacts", icon: Users },
+  { name: "Chatbot (Auto-Reply)", href: "/chatbot", icon: Bot },
+  { name: "Agent IA (Avancé)", href: "/ai-agent", icon: BrainCircuit, comingSoon: true },
   { name: "Templates", href: "/templates", icon: LayoutTemplate },
 ];
 
@@ -26,6 +31,20 @@ interface SidebarProps {
 
 export function Sidebar({ className, isOpen, setIsOpen }: SidebarProps) {
   const currentPath = usePathname() || "/dashboard"; 
+  const [userPlan, setUserPlan] = useState<string>("Chargement...");
+
+  useEffect(() => {
+    const fetchPlan = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        const plan = await getUserPlan(data.user.id);
+        setUserPlan(`Plan ${plan.charAt(0).toUpperCase() + plan.slice(1)}`);
+      } else {
+        setUserPlan("Non connecté");
+      }
+    };
+    fetchPlan();
+  }, []);
 
   return (
     <div
@@ -46,8 +65,8 @@ export function Sidebar({ className, isOpen, setIsOpen }: SidebarProps) {
               G
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-semibold">GROSDIGITAL</span>
-              <span className="text-xs text-gray-500">Plan Starter</span>
+              <span className="text-sm font-semibold">Urigi User</span>
+              <span className="text-xs text-gray-500">{userPlan}</span>
             </div>
           </div>
         </div>
@@ -76,7 +95,12 @@ export function Sidebar({ className, isOpen, setIsOpen }: SidebarProps) {
                         className={cn("h-5 w-5 shrink-0", isActive ? "text-primary" : "text-gray-400 group-hover:text-primary")}
                         aria-hidden="true"
                       />
-                      {item.name}
+                      <span className="flex-1">{item.name}</span>
+                      {item.comingSoon && (
+                        <span className="ml-auto inline-flex items-center rounded-md bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
+                          À venir
+                        </span>
+                      )}
                     </Link>
                   </li>
                 );

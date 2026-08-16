@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from 'react-hot-toast';
 import { useState, useEffect } from "react";
 import { Plus, Search, MessageSquare, Edit2, Trash2, Copy, Sparkles, Wand2, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -98,7 +99,7 @@ export default function TemplatesPage() {
       .select();
 
     if (error) {
-      alert("Erreur lors de la duplication : " + error.message);
+      toast.error("Erreur lors de la duplication : " + error.message);
       return;
     }
 
@@ -124,7 +125,7 @@ export default function TemplatesPage() {
       .eq('id', templateToDelete);
       
     if (error) {
-      alert("Erreur : " + error.message);
+      toast.error("Erreur : " + error.message);
       setIsDeleting(false);
       return;
     }
@@ -143,7 +144,7 @@ export default function TemplatesPage() {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      alert("Erreur: Utilisateur non connecté.");
+      toast.error("Erreur: Utilisateur non connecté.");
       setIsSaving(false);
       return;
     }
@@ -161,7 +162,7 @@ export default function TemplatesPage() {
         .select();
 
       if (error) {
-        alert("Erreur de mise à jour: " + error.message);
+        toast.error("Erreur de mise à jour: " + error.message);
       } else if (data) {
         setTemplates(templates.map(t => (t.id === editingTemplateId ? data[0] : t)));
         setToastMessage("Template modifié !");
@@ -179,7 +180,7 @@ export default function TemplatesPage() {
         .select();
 
       if (error) {
-        alert("Erreur d'insertion: " + error.message);
+        toast.error("Erreur d'insertion: " + error.message);
       } else if (data) {
         setTemplates([data[0], ...templates]);
         setToastMessage("Nouveau template enregistré !");
@@ -319,8 +320,8 @@ export default function TemplatesPage() {
                     type="text" 
                     value={newTemplateName}
                     onChange={(e) => setNewTemplateName(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm" 
-                    placeholder="Ex: Relance Hivernal" 
+                    className="w-full rounded-lg border-gray-300 py-2.5 px-3 shadow-sm focus:border-primary focus:ring-primary sm:text-sm" 
+                    placeholder="Ex: Relance Hivernale" 
                   />
                 </div>
                 <div>
@@ -328,7 +329,7 @@ export default function TemplatesPage() {
                   <select 
                     value={newTemplateCategory}
                     onChange={(e) => setNewTemplateCategory(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                    className="w-full rounded-lg border-gray-300 py-2.5 px-3 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                   >
                     <option value="Promotion">Promotion</option>
                     <option value="Onboarding">Onboarding</option>
@@ -362,7 +363,7 @@ export default function TemplatesPage() {
                         value={aiPrompt}
                         onChange={(e) => setAiPrompt(e.target.value)}
                         placeholder="Ex: Une promo de 20% pour la fête des mères..."
-                        className="flex-1 rounded-md border-purple-200 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
+                        className="flex-1 rounded-lg border-purple-200 py-2.5 px-3 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
                         disabled={isGenerating}
                       />
                       <button 
@@ -391,7 +392,7 @@ export default function TemplatesPage() {
                     rows={6}
                     value={newTemplateContent}
                     onChange={(e) => setNewTemplateContent(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm resize-none"
+                    className="w-full rounded-lg border-gray-300 py-3 px-4 leading-relaxed shadow-sm focus:border-primary focus:ring-primary sm:text-sm resize-none"
                     placeholder="Tapez votre message ici. Utilisez {{nom}} pour personnaliser."
                   />
                   <span className="absolute bottom-3 right-3 text-xs text-gray-400 bg-white px-1">

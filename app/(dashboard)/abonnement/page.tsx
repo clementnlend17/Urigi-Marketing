@@ -1,11 +1,24 @@
 "use client";
 
+import { toast } from 'react-hot-toast';
 import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function AbonnementPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user?.email === 'freddynlend7@gmail.com') {
+        setIsAdmin(true);
+      }
+    };
+    checkAdmin();
+  }, []);
   
   // Liens de paiement Chariow
   const chariowLinks: Record<string, string> = {
@@ -13,14 +26,34 @@ export default function AbonnementPage() {
     elite: "https://jkqiujbo.mychariow.shop/prd_jmc3wfol"
   };
 
-  const handleSubscribe = (planId: string) => {
+  const handleSubscribe = async (planId: string) => {
     setIsLoading(true);
+
+    if (isAdmin) {
+      // Simulation pour l'administrateur
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        const { error } = await supabase.from('subscriptions').upsert({
+          user_id: data.user.id,
+          plan_tier: planId,
+          status: 'active',
+          current_period_end: new Date(Date.now() + 30*24*60*60*1000).toISOString()
+        }, { onConflict: 'user_id' });
+        if (!error) {
+          toast.success(`[Mode Dev] Compte passé en ${planId.toUpperCase()} ! Rechargez la page.`);
+        } else {
+          toast.error("Erreur de simulation : " + error.message);
+        }
+      }
+      setIsLoading(false);
+      return;
+    }
+
     const link = chariowLinks[planId];
-    
     if (link) {
       window.location.href = link;
     } else {
-      alert("Ce plan n'est pas encore disponible.");
+      toast.error("Ce plan n'est pas encore disponible.");
       setIsLoading(false);
     }
   };
@@ -113,7 +146,7 @@ export default function AbonnementPage() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 flex flex-col">
             <h3 className="text-xl font-semibold text-gray-900">Plan Elite</h3>
             <div className="mt-4 flex items-baseline text-4xl font-extrabold">
-              30 000 FCFA
+              14 999 FCFA
               <span className="ml-1 text-xl font-medium text-gray-500">/mois</span>
             </div>
             <p className="mt-4 text-gray-500">Pour les agences et grandes équipes.</p>
@@ -144,6 +177,66 @@ export default function AbonnementPage() {
             </button>
           </div>
         </div>
+
+        {/* SECTION DEBUG / TEST UNIQUEMENT */}
+        {isAdmin && (
+          <div className="mt-20 border-t border-gray-200 pt-10 text-center">
+            <p className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-4">🔧 Mode Développeur (Test Uniquement)</p>
+            <p className="text-sm text-gray-600 mb-6">Utilisez ces boutons pour simuler un paiement réussi sans passer par Chariow :</p>
+            <div className="flex flex-wrap justify-center gap-4">
+              <button 
+                onClick={async () => {
+                  const { supabase } = await import('@/lib/supabase');
+                  const { data } = await supabase.auth.getUser();
+                  if (data.user) {
+                    const { error } = await supabase.from('subscriptions').upsert({
+                      user_id: data.user.id,
+                      plan_tier: 'pro',
+                      status: 'active',
+                      current_period_end: new Date(Date.now() + 30*24*60*60*1000).toISOString()
+                    }, { onConflict: 'user_id' });
+                    if (!error) toast.success("Compte mis à niveau vers PRO avec succès ! Rechargez la page.");
+                  }
+                }}
+                className="px-4 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-lg text-sm font-bold transition-colors border border-indigo-200"
+              >
+                Forcer le Plan PRO
+              </button>
+              <button 
+                onClick={async () => {
+                  const { supabase } = await import('@/lib/supabase');
+                  const { data } = await supabase.auth.getUser();
+                  if (data.user) {
+                    const { error } = await supabase.from('subscriptions').upsert({
+                      user_id: data.user.id,
+                      plan_tier: 'elite',
+                      status: 'active',
+                      current_period_end: new Date(Date.now() + 30*24*60*60*1000).toISOString()
+                    }, { onConflict: 'user_id' });
+                    if (!error) toast.success("Compte mis à niveau vers ELITE avec succès ! Rechargez la page.");
+                  }
+                }}
+                className="px-4 py-2 bg-gray-200 text-gray-800 hover:bg-gray-300 rounded-lg text-sm font-bold transition-colors border border-gray-300"
+              >
+                Forcer le Plan ELITE
+              </button>
+              <button 
+                onClick={async () => {
+                  const { supabase } = await import('@/lib/supabase');
+                  const { data } = await supabase.auth.getUser();
+                  if (data.user) {
+                    const { error } = await supabase.from('subscriptions').delete().eq('user_id', data.user.id);
+                    if (!error) toast.success("Abonnement annulé (Retour au Plan Starter). Rechargez la page.");
+                  }
+                }}
+                className="px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-sm font-bold transition-colors border border-red-200"
+              >
+                Forcer le Plan STARTER (Gratuit)
+              </button>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

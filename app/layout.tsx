@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   description: "Plateforme d'envoi de campagnes WhatsApp pour les PME.",
 };
 
+import { Toaster } from 'react-hot-toast';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -16,7 +18,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        {children}
+        <Toaster position="top-right" />
+      </body>
     </html>
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { toast } from 'react-hot-toast';
+import { supabase } from '@/lib/supabase';
 import { useEffect, useState } from "react";
 import { User, Shield, Bell, Smartphone, Key, Save, CheckCircle2, QrCode, X, WifiOff, Loader2 } from "lucide-react";
 
@@ -8,6 +10,14 @@ export default function SettingsPage() {
   const [isSaved, setIsSaved] = useState(false);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  // 2FA States
+  const [mfaStatus, setMfaStatus] = useState<"loading" | "unverified" | "verified">("loading");
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaQrCode, setMfaQrCode] = useState<string | null>(null);
+  const [mfaSecret, setMfaSecret] = useState<string | null>(null);
+  const [mfaVerifyCode, setMfaVerifyCode] = useState("");
+
 
   // States pour WhatsApp
   const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
@@ -21,6 +31,73 @@ export default function SettingsPage() {
   const [isRequestingCode, setIsRequestingCode] = useState(false);
 
   const [showCopyToast, setShowCopyToast] = useState(false);
+
+  
+  const checkMfaStatus = async () => {
+    try {
+      const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
+      if (factorsError) throw factorsError;
+      const verifiedFactor = factorsData.all.find(f => f.status === "verified");
+      if (verifiedFactor) {
+        setMfaStatus("verified");
+        setMfaFactorId(verifiedFactor.id);
+      } else {
+        setMfaStatus("unverified");
+      }
+    } catch (e) {
+      console.error(e);
+      setMfaStatus("unverified");
+    }
+  };
+
+  useEffect(() => {
+    checkMfaStatus();
+  }, []);
+
+  const enrollMfa = async () => {
+    try {
+      toast.loading("Génération du QR Code...", { id: "mfa" });
+      const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp" });
+      if (error) throw error;
+      setMfaFactorId(data.id);
+      setMfaQrCode(data.totp.qr_code);
+      setMfaSecret(data.totp.secret);
+      toast.dismiss("mfa");
+    } catch (e) {
+      toast.error("Erreur lors de la génération 2FA : " + e.message, { id: "mfa" });
+    }
+  };
+
+  const verifyMfa = async () => {
+    if (!mfaVerifyCode || mfaVerifyCode.length !== 6 || !mfaFactorId) return toast.error("Veuillez entrer le code à 6 chiffres.");
+    try {
+      toast.loading("Vérification en cours...", { id: "mfa_verify" });
+      const challenge = await supabase.auth.mfa.challenge({ factorId: mfaFactorId });
+      if (challenge.error) throw challenge.error;
+      const verify = await supabase.auth.mfa.verify({ factorId: mfaFactorId, challengeId: challenge.data.id, code: mfaVerifyCode });
+      if (verify.error) throw verify.error;
+      toast.success("Double authentification activée avec succès !", { id: "mfa_verify" });
+      setMfaStatus("verified");
+      setMfaQrCode(null);
+      setMfaVerifyCode("");
+    } catch (e) {
+      toast.error("Code invalide : " + e.message, { id: "mfa_verify" });
+    }
+  };
+
+  const unenrollMfa = async () => {
+    if (!mfaFactorId) return;
+    try {
+      toast.loading("Désactivation en cours...", { id: "mfa_unenroll" });
+      const { error } = await supabase.auth.mfa.unenroll({ factorId: mfaFactorId });
+      if (error) throw error;
+      toast.success("Double authentification désactivée.", { id: "mfa_unenroll" });
+      setMfaStatus("unverified");
+      setMfaFactorId(null);
+    } catch (e) {
+      toast.error("Erreur : " + e.message, { id: "mfa_unenroll" });
+    }
+  };
 
   const checkWhatsAppStatus = async () => {
     try {
@@ -70,7 +147,7 @@ export default function SettingsPage() {
   }, [isWhatsAppModalOpen, isWhatsAppConnected, connectionMethod]);
 
   const requestPairingCode = async () => {
-    if (!phoneNumber) return alert("Veuillez entrer un numéro de téléphone");
+    if (!phoneNumber) return toast.error("Veuillez entrer un numéro de téléphone");
     setIsRequestingCode(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -83,11 +160,11 @@ export default function SettingsPage() {
       if (data.code) {
         setPairingCode(data.code);
       } else {
-        alert(data.error || "Une erreur est survenue.");
+        toast.error(data.error || "Une erreur est survenue.");
       }
     } catch (e) {
       console.error(e);
-      alert("Erreur de connexion au serveur WhatsApp.");
+      toast.error("Erreur de connexion au serveur WhatsApp.");
     }
     setIsRequestingCode(false);
   };
@@ -118,7 +195,7 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 1024 * 1024) {
-        alert("L'image est trop volumineuse (maximum 1MB).");
+        toast.error("L'image est trop volumineuse (maximum 1MB).");
         return;
       }
       setIsUploadingAvatar(true);
@@ -276,12 +353,75 @@ export default function SettingsPage() {
                   <p className="text-sm text-gray-600 mb-5 leading-relaxed">
                     Ajoutez une couche de sécurité supplémentaire à votre compte en exigeant plus qu'un simple mot de passe pour vous connecter. Cela protègera vos listes de contacts.
                   </p>
-                  <button 
-                    onClick={() => alert("L'authentification 2FA sera disponible dans la prochaine version pro.")}
-                    className="px-5 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 shadow-sm transition-colors"
-                  >
-                    Activer la 2FA par SMS
-                  </button>
+                  
+                  {mfaStatus === "loading" && (
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Chargement de l'état 2FA...
+                    </div>
+                  )}
+
+                  {mfaStatus === "verified" && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 text-green-600 bg-green-50 px-4 py-2 rounded-lg border border-green-200 inline-flex font-medium">
+                        <CheckCircle2 className="w-5 h-5" />
+                        2FA Activée
+                      </div>
+                      <div>
+                        <button 
+                          onClick={unenrollMfa}
+                          className="px-5 py-2.5 bg-white border border-red-200 text-red-600 rounded-lg text-sm font-semibold hover:bg-red-50 shadow-sm transition-colors"
+                        >
+                          Désactiver la 2FA
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {mfaStatus === "unverified" && !mfaQrCode && (
+                    <button 
+                      onClick={enrollMfa}
+                      className="px-5 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 shadow-sm transition-colors flex items-center gap-2"
+                    >
+                      <QrCode className="w-4 h-4" />
+                      Configurer la 2FA (Google Authenticator)
+                    </button>
+                  )}
+
+                  {mfaStatus === "unverified" && mfaQrCode && (
+                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mt-4 space-y-4 max-w-sm">
+                      <h4 className="font-semibold text-gray-900">1. Scannez le QR Code</h4>
+                      <p className="text-sm text-gray-500">Ouvrez Google Authenticator ou Authy et scannez l'image ci-dessous :</p>
+                      <div className="flex justify-center bg-gray-50 p-4 rounded-lg">
+                        <img src={mfaQrCode} alt="QR Code 2FA" className="w-48 h-48" />
+                      </div>
+                      
+                      <h4 className="font-semibold text-gray-900 pt-2">2. Entrez le code à 6 chiffres</h4>
+                      <input 
+                        type="text" 
+                        maxLength={6}
+                        placeholder="Ex: 123456"
+                        value={mfaVerifyCode}
+                        onChange={(e) => setMfaVerifyCode(e.target.value.replace(/\D/g, ''))}
+                        className="w-full px-4 py-3 text-center tracking-[0.5em] text-lg font-mono rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                      />
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => { setMfaQrCode(null); setMfaVerifyCode(""); }}
+                          className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                        >
+                          Annuler
+                        </button>
+                        <button 
+                          onClick={verifyMfa}
+                          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                        >
+                          Vérifier
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               </div>
             </div>

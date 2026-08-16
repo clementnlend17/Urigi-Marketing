@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from 'react-hot-toast';
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Search, Filter, MoreVertical, Calendar, X, Edit, Trash2, MoreHorizontal } from "lucide-react";
@@ -70,7 +71,7 @@ export default function CampagnesPage() {
       .eq('id', campaignToDelete);
 
     if (error) {
-      alert("Erreur lors de la suppression de la campagne : " + error.message);
+      toast.error("Erreur lors de la suppression de la campagne : " + error.message);
       setIsDeleting(false);
       return;
     }

@@ -1,8 +1,11 @@
 "use client";
 
+import { toast } from 'react-hot-toast';
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X, Smartphone, DownloadCloud, Users, CheckSquare, Square, Search, ArrowRight, Save, QrCode, WifiOff } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { consumeExtraction, getUserPlan } from "@/lib/limits";
 
 interface GroupGrabberModalProps {
   isOpen: boolean;
@@ -22,11 +25,25 @@ export function GroupGrabberModal({ isOpen, onClose, onSave }: GroupGrabberModal
   const [extractedContacts, setExtractedContacts] = useState<{phone: string; name?: string; sourceGroup?: string}[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
 
+  // Limites
+  const [userPlan, setUserPlan] = useState<'free' | 'pro' | 'elite'>('free');
+  const [userId, setUserId] = useState<string>("");
+
   useEffect(() => {
     if (isOpen) {
       checkStatusAndFetchGroups();
+      fetchUserPlan();
     }
   }, [isOpen]);
+
+  const fetchUserPlan = async () => {
+    const { data } = await supabase.auth.getUser();
+    if (data.user) {
+      setUserId(data.user.id);
+      const plan = await getUserPlan(data.user.id);
+      setUserPlan(plan);
+    }
+  };
 
   const checkStatusAndFetchGroups = async () => {
     try {
@@ -54,12 +71,20 @@ export function GroupGrabberModal({ isOpen, onClose, onSave }: GroupGrabberModal
     if (newSelected.has(id)) {
       newSelected.delete(id);
     } else {
+      if (userPlan === 'free' && newSelected.size >= 1) {
+        toast.error("En version Starter, vous ne pouvez extraire qu'un seul groupe à la fois. Passez au plan Pro pour une sélection illimitée.");
+        return;
+      }
       newSelected.add(id);
     }
     setSelectedGroups(newSelected);
   };
 
   const handleToggleAll = () => {
+    if (userPlan === 'free') {
+      toast.error("En version Starter, vous ne pouvez extraire qu'un seul groupe. Passez au plan Pro pour utiliser cette fonctionnalité.");
+      return;
+    }
     if (selectedGroups.size === groups.length) {
       setSelectedGroups(new Set());
     } else {
@@ -67,10 +92,27 @@ export function GroupGrabberModal({ isOpen, onClose, onSave }: GroupGrabberModal
     }
   };
 
-  const handleExtract = () => {
+  const handleExtract = async () => {
     if (selectedGroups.size === 0) return;
+    
     setIsExtracting(true);
     
+    // Vérification de la limite d'extraction
+    if (userId) {
+      try {
+        const allowed = await consumeExtraction(userId);
+        if (!allowed) {
+          toast.error("Vous avez atteint votre limite d'extraction pour le plan Starter (1 extraction maximum). Veuillez passer au plan Pro ou Elite pour extraire d'autres groupes.");
+          setIsExtracting(false);
+          return;
+        }
+      } catch (e: any) {
+        toast.error("Erreur serveur : " + (e.message || "Impossible de vérifier la limite."));
+        setIsExtracting(false);
+        return;
+      }
+    }
+
     setTimeout(() => {
       const allExtractedContacts: {phone: string; name?: string; sourceGroup?: string}[] = [];
       selectedGroups.forEach(groupId => {

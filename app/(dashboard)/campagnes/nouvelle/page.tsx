@@ -1,10 +1,12 @@
 "use client";
 
+import { toast } from 'react-hot-toast';
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ArrowLeft, Save, Send, CheckCircle, AlertCircle, Loader2, Bold, Italic, Strikethrough, Link as LinkIcon, Image as ImageIcon, User, X, Smile } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { canLaunchCampaign } from "@/lib/limits";
 
 interface Contact {
   id: string;
@@ -31,6 +33,8 @@ export default function NouvelleCampagnePage() {
   
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [dbTemplates, setDbTemplates] = useState<any[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   
   // Progress State
   const [isSending, setIsSending] = useState(false);
@@ -43,11 +47,26 @@ export default function NouvelleCampagnePage() {
 
   useEffect(() => {
     fetchContacts();
+    fetchTemplates();
     checkWhatsAppStatus();
     if (campaignId) {
       loadCampaign();
     }
   }, [campaignId]);
+
+  const fetchTemplates = async () => {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+
+    const { data, error } = await supabase
+      .from('templates')
+      .select('*')
+      .eq('user_id', userData.user.id);
+      
+    if (data && !error) {
+      setDbTemplates(data);
+    }
+  };
 
   const loadCampaign = async () => {
     const { data, error } = await supabase.from('campaigns').select('*').eq('id', campaignId).single();
@@ -87,11 +106,11 @@ export default function NouvelleCampagnePage() {
     if (file) {
       const isVideo = file.type.startsWith('video/');
       if (isVideo && file.size > 15 * 1024 * 1024) {
-        alert("La vidéo est trop volumineuse. Veuillez choisir une vidéo de moins de 15 Mo.");
+        toast.error("La vidéo est trop volumineuse. Veuillez choisir une vidéo de moins de 15 Mo.");
         return;
       }
       if (!isVideo && file.size > 5 * 1024 * 1024) {
-        alert("L'image est trop volumineuse. Veuillez choisir une image de moins de 5 Mo.");
+        toast.error("L'image est trop volumineuse. Veuillez choisir une image de moins de 5 Mo.");
         return;
       }
       const reader = new FileReader();
@@ -146,6 +165,17 @@ export default function NouvelleCampagnePage() {
     }
   };
 
+  const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setSelectedTemplateId(val);
+    if (val !== "") {
+      const template = dbTemplates.find(t => t.id === val);
+      if (template) {
+        setMessage(template.content);
+      }
+    }
+  };
+
   const fetchContacts = async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) return;
@@ -172,12 +202,12 @@ export default function NouvelleCampagnePage() {
 
   const startCampaign = async () => {
     if (!isConnected) {
-      alert("Votre compte WhatsApp n'est pas connecté. Veuillez le connecter dans les paramètres avant d'envoyer la campagne.");
+      toast.error("Votre compte WhatsApp n'est pas connecté. Veuillez le connecter dans les paramètres avant d'envoyer la campagne.");
       return;
     }
 
     if (!campaignName || !targetGroup || !message) {
-      alert("Veuillez remplir tous les champs.");
+      toast.error("Veuillez remplir tous les champs.");
       return;
     }
 
@@ -187,7 +217,19 @@ export default function NouvelleCampagnePage() {
     }
 
     if (targetContacts.length === 0) {
-      alert("Aucun contact trouvé pour ce groupe.");
+      toast.error("Aucun contact trouvé pour ce groupe.");
+      return;
+    }
+
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      toast.error("Vous devez être connecté.");
+      return;
+    }
+
+    const limitCheck = await canLaunchCampaign(userData.user.id, targetContacts.length);
+    if (!limitCheck.allowed) {
+      toast.error(`Votre abonnement ne vous permet d'envoyer qu'à ${limitCheck.maxAllowed} contacts par campagne (ou cette fonctionnalité est bloquée). Vous essayez d'envoyer à ${targetContacts.length} contacts. Veuillez passer à l'abonnement supérieur.`);
       return;
     }
 
@@ -296,18 +338,18 @@ export default function NouvelleCampagnePage() {
 
         if (error) {
           console.error("Erreur d'insertion:", error);
-          alert("Erreur lors de l'enregistrement de l'historique de campagne: " + error.message);
+          toast.error("Erreur lors de l'enregistrement de l'historique de campagne: " + error.message);
         }
       }
     } catch(e: any) {
       console.log("Historique de campagne non sauvegardé", e);
-      alert("Exception: " + e.message);
+      toast.error("Exception: " + e.message);
     }
   };
 
   const saveDraft = async () => {
     if (!campaignName) {
-      alert("Veuillez au moins renseigner le nom de la campagne pour la sauvegarder en brouillon.");
+      toast.error("Veuillez au moins renseigner le nom de la campagne pour la sauvegarder en brouillon.");
       return;
     }
 
@@ -342,13 +384,13 @@ export default function NouvelleCampagnePage() {
         }
 
         if (error) {
-          alert("Erreur lors de la sauvegarde du brouillon: " + error.message);
+          toast.error("Erreur lors de la sauvegarde du brouillon: " + error.message);
         } else {
           router.push('/campagnes');
         }
       }
     } catch(e: any) {
-      alert("Exception: " + e.message);
+      toast.error("Exception: " + e.message);
     }
   };
   return (
@@ -591,11 +633,14 @@ export default function NouvelleCampagnePage() {
                     <select
                       id="template"
                       name="template"
+                      value={selectedTemplateId}
+                      onChange={handleTemplateChange}
                       className="block w-full rounded-lg border border-gray-300 py-2.5 px-3 text-gray-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 sm:text-sm sm:leading-6 transition-all bg-white"
                     >
-                      <option>Partir de zéro</option>
-                      <option>Template : Offre Spéciale</option>
-                      <option>Template : Message de Bienvenue</option>
+                      <option value="">Partir de zéro</option>
+                      {dbTemplates.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -709,7 +754,7 @@ export default function NouvelleCampagnePage() {
                 {/* Header du Statut */}
                 <div className="absolute top-0 left-0 right-0 p-4 flex items-center z-10 bg-gradient-to-b from-black/60 to-transparent">
                   <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-xs font-bold overflow-hidden border-2 border-white/20">
-                    <UserIcon className="w-6 h-6 text-gray-400" />
+                    <User className="w-6 h-6 text-gray-400" />
                   </div>
                   <div className="ml-3">
                     <p className="text-white text-[15px] font-semibold drop-shadow-md">Mon Statut</p>
@@ -755,7 +800,7 @@ export default function NouvelleCampagnePage() {
               <div className="bg-[#E5DDD5] w-full rounded-2xl h-[400px] relative overflow-hidden flex flex-col shadow-inner">
                 <div className="bg-[#075E54] h-14 w-full flex items-center px-4 shadow-sm z-10">
                   <div className="w-9 h-9 rounded-full bg-gray-300 flex items-center justify-center text-xs font-bold overflow-hidden">
-                    <UserIcon className="w-5 h-5 text-gray-500" />
+                    <User className="w-5 h-5 text-gray-500" />
                   </div>
                   <div className="ml-3">
                     <p className="text-white text-[15px] font-semibold">Client</p>
@@ -845,13 +890,5 @@ export default function NouvelleCampagnePage() {
       )}
 
     </div>
-  );
-}
-
-function UserIcon(props: any) {
-  return (
-    <svg fill="currentColor" viewBox="0 0 24 24" {...props}>
-      <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
-    </svg>
   );
 }

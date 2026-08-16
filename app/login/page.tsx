@@ -7,7 +7,8 @@ import { supabase } from "@/lib/supabase";
 import { MessageCircle, ArrowLeft, CheckCircle2, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
-  const [view, setView] = useState<"login" | "forgot_password">("login");
+  const [view, setView] = useState<"login" | "forgot_password" | "2fa">("login");
+  const [mfaCode, setMfaCode] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -21,7 +22,7 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -29,8 +30,54 @@ export default function LoginPage() {
     if (error) {
       setError(error.message);
       setLoading(false);
-    } else {
+      return;
+    }
+
+    try {
+      const { data: mfaData, error: mfaError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (mfaError) throw mfaError;
+
+      if (mfaData.nextLevel === 'aal2' && mfaData.currentLevel === 'aal1') {
+        setView("2fa");
+        setLoading(false);
+        return;
+      }
+
       router.push("/dashboard");
+    } catch (e) {
+      setError(e.message);
+      setLoading(false);
+    }
+  };
+
+  
+  const handleVerify2FA = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (mfaCode.length !== 6) return setError("Le code doit contenir 6 chiffres.");
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data: factorsData } = await supabase.auth.mfa.listFactors();
+      const totpFactor = factorsData?.all.find((f) => f.factor_type === 'totp' && f.status === 'verified');
+      
+      if (!totpFactor) throw new Error("Aucun facteur 2FA valide trouvé.");
+
+      const challenge = await supabase.auth.mfa.challenge({ factorId: totpFactor.id });
+      if (challenge.error) throw challenge.error;
+
+      const verify = await supabase.auth.mfa.verify({
+        factorId: totpFactor.id,
+        challengeId: challenge.data.id,
+        code: mfaCode
+      });
+      
+      if (verify.error) throw verify.error;
+
+      router.push("/dashboard");
+    } catch (e: any) {
+      setError("Code 2FA invalide : " + e.message);
+      setLoading(false);
     }
   };
 
@@ -103,7 +150,50 @@ export default function LoginPage() {
       {/* Right Panel - Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 lg:p-16">
         <div className="w-full max-w-md">
-          {view === "login" ? (
+          {view === "2fa" ? (
+            <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+              <button 
+                onClick={() => { setView("login"); setError(null); setSuccess(null); }}
+                className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors mb-8"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Retour
+              </button>
+              
+              <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Vérification en deux étapes</h2>
+              <p className="text-gray-500 mb-8">Veuillez entrer le code à 6 chiffres généré par votre application d'authentification (Google Authenticator, Authy, etc.).</p>
+
+              <form onSubmit={handleVerify2FA} className="space-y-5">
+                {error && (
+                  <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm font-medium border border-red-100 flex items-start gap-2">
+                    <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span>{error}</span>
+                  </div>
+                )}
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Code à 6 chiffres</label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm text-center tracking-[0.5em] text-2xl font-mono"
+                    placeholder="123456"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full flex justify-center py-3.5 px-4 rounded-xl text-white font-semibold bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-all shadow-md disabled:opacity-70 disabled:cursor-not-allowed mt-2"
+                >
+                  {loading ? "Vérification..." : "Vérifier et se connecter"}
+                </button>
+              </form>
+            </div>
+          ) : view === "login" ? (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="lg:hidden flex items-center gap-2 mb-10">
                 <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
