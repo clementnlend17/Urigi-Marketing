@@ -9,6 +9,8 @@ import { supabase } from "@/lib/supabase";
 export default function AbonnementPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [licenseKey, setLicenseKey] = useState("");
+  const [isActivating, setIsActivating] = useState(false);
   
   useEffect(() => {
     const checkAdmin = async () => {
@@ -61,6 +63,43 @@ export default function AbonnementPage() {
     } else {
       toast.error("Ce plan n'est pas encore disponible.");
       setIsLoading(false);
+    }
+  };
+
+  const handleActivateLicense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!licenseKey.trim()) {
+      toast.error("Veuillez entrer une clé de licence valide.");
+      return;
+    }
+
+    setIsActivating(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        toast.error("Vous devez être connecté.");
+        setIsActivating(false);
+        return;
+      }
+
+      const res = await fetch("/api/activate-license", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ license_key: licenseKey.trim(), userId: userData.user.id })
+      });
+
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        toast.success(`Succès ! Votre abonnement ${data.planTier.toUpperCase()} est activé. Rechargez la page.`);
+        setLicenseKey("");
+      } else {
+        toast.error(data.error || "Clé de licence invalide.");
+      }
+    } catch (error) {
+      toast.error("Une erreur s'est produite lors de la validation.");
+    } finally {
+      setIsActivating(false);
     }
   };
 
@@ -182,6 +221,35 @@ export default function AbonnementPage() {
               Passer au Plan Elite
             </button>
           </div>
+        </div>
+
+        {/* Section Activation de Licence */}
+        <div className="mt-16 max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Vous avez déjà payé ?</h2>
+          <p className="text-gray-500 mb-6">
+            Si vous avez reçu une clé de licence par email après votre achat, collez-la ci-dessous pour activer votre abonnement instantanément.
+          </p>
+          <form onSubmit={handleActivateLicense} className="flex flex-col sm:flex-row gap-3 justify-center">
+            <input 
+              type="text" 
+              placeholder="Ex: XXXX-XXXX-XXXX-XXXX" 
+              value={licenseKey}
+              onChange={(e) => setLicenseKey(e.target.value)}
+              className="flex-1 max-w-md px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-center sm:text-left text-gray-900"
+            />
+            <button 
+              type="submit" 
+              disabled={isActivating || !licenseKey.trim()}
+              className="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              {isActivating ? "Activation..." : "Activer ma licence"}
+            </button>
+          </form>
         </div>
 
         {/* SECTION DEBUG / TEST UNIQUEMENT */}
