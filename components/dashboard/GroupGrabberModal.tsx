@@ -47,13 +47,14 @@ export function GroupGrabberModal({ isOpen, onClose, onSave }: GroupGrabberModal
 
   const checkStatusAndFetchGroups = async () => {
     try {
-      const statusRes = await fetch('http://localhost:3001/api/status');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const statusRes = await fetch(`${apiUrl}/api/status`);
       const status = await statusRes.json();
       setIsConnected(status.connected);
 
       if (status.connected) {
         setIsLoadingGroups(true);
-        const groupsRes = await fetch('http://localhost:3001/api/groups');
+        const groupsRes = await fetch(`${apiUrl}/api/groups`);
         const groupsData = await groupsRes.json();
         setGroups(groupsData.groups || []);
         setIsLoadingGroups(false);
