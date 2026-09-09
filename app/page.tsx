@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import { MessageCircle, Zap, PlayCircle, ArrowRight, TimerOff, MessageSquareOff, UserX, Target, Settings, Layers, Rocket, Monitor, Tablet, Smartphone } from 'lucide-react';
 
 const devices = [
@@ -22,12 +22,12 @@ export default function LandingPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const fadeUpVariant = {
+  const fadeUpVariant: Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
   };
 
-  const staggerContainer = {
+  const staggerContainer: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,

@@ -44,7 +44,7 @@ export default function LoginPage() {
       }
 
       router.push("/dashboard");
-    } catch (e) {
+    } catch (e: any) {
       setError(e.message);
       setLoading(false);
     }

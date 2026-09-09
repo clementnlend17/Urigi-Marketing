@@ -63,7 +63,7 @@ export default function SettingsPage() {
       setMfaQrCode(data.totp.qr_code);
       setMfaSecret(data.totp.secret);
       toast.dismiss("mfa");
-    } catch (e) {
+    } catch (e: any) {
       toast.error("Erreur lors de la génération 2FA : " + e.message, { id: "mfa" });
     }
   };
@@ -80,7 +80,7 @@ export default function SettingsPage() {
       setMfaStatus("verified");
       setMfaQrCode(null);
       setMfaVerifyCode("");
-    } catch (e) {
+    } catch (e: any) {
       toast.error("Code invalide : " + e.message, { id: "mfa_verify" });
     }
   };
@@ -94,7 +94,7 @@ export default function SettingsPage() {
       toast.success("Double authentification désactivée.", { id: "mfa_unenroll" });
       setMfaStatus("unverified");
       setMfaFactorId(null);
-    } catch (e) {
+    } catch (e: any) {
       toast.error("Erreur : " + e.message, { id: "mfa_unenroll" });
     }
   };
