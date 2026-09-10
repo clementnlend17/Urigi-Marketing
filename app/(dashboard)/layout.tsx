@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Topbar } from "@/components/dashboard/Topbar";
+import { WelcomeOfferBanner } from "@/components/dashboard/WelcomeOfferBanner";
 import AuthGuard from "@/components/AuthGuard";
 
 export default function DashboardLayout({
@@ -31,6 +32,7 @@ export default function DashboardLayout({
 
         {/* Contenu principal */}
         <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+          <WelcomeOfferBanner />
           <Topbar onOpenSidebar={() => setSidebarOpen(true)} />
           <main className="flex-1 overflow-y-auto">
             <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">

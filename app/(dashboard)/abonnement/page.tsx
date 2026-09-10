@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from 'react-hot-toast';
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Sparkles, Timer } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
@@ -10,15 +10,68 @@ export default function AbonnementPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState<'free' | 'pro' | 'elite'>('free');
+  const [isWelcomeOfferActive, setIsWelcomeOfferActive] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
 
   useEffect(() => {
-    const checkAdmin = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (data?.user?.email === 'freddynlend7@gmail.com') {
+    let timerId: NodeJS.Timeout | null = null;
+
+    const loadUserData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      if (user.email === 'freddynlend7@gmail.com') {
         setIsAdmin(true);
       }
+
+      // Vérifier l'abonnement actuel
+      const { data: sub } = await supabase
+        .from('subscriptions')
+        .select('plan_tier, status')
+        .eq('user_id', user.id)
+        .single();
+
+      const activePlan = (sub && sub.status === 'active' ? sub.plan_tier : 'free') as 'free' | 'pro' | 'elite';
+      setCurrentPlan(activePlan);
+
+      // Calcul de l'offre de bienvenue (-50% durant les 10 premiers jours)
+      if (user.created_at && activePlan === 'free') {
+        const createdAt = new Date(user.created_at).getTime();
+        const expirationTime = createdAt + 10 * 24 * 60 * 60 * 1000;
+
+        const updateTimer = () => {
+          const now = Date.now();
+          const diff = expirationTime - now;
+
+          if (diff <= 0) {
+            setIsWelcomeOfferActive(false);
+            setTimeLeft(null);
+            return false;
+          }
+
+          const totalSeconds = Math.floor(diff / 1000);
+          const days = Math.floor(totalSeconds / (3600 * 24));
+          const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600);
+          const minutes = Math.floor((totalSeconds % 3600) / 60);
+          const seconds = totalSeconds % 60;
+
+          setTimeLeft({ days, hours, minutes, seconds });
+          setIsWelcomeOfferActive(true);
+          return true;
+        };
+
+        if (updateTimer()) {
+          timerId = setInterval(() => {
+            if (!updateTimer() && timerId) {
+              clearInterval(timerId);
+            }
+          }, 1000);
+        }
+      }
     };
-    checkAdmin();
+
+    loadUserData();
 
     // Vérifier si retour après paiement réussi
     if (typeof window !== 'undefined') {
@@ -28,6 +81,10 @@ export default function AbonnementPage() {
         window.history.replaceState({}, '', window.location.pathname);
       }
     }
+
+    return () => {
+      if (timerId) clearInterval(timerId);
+    };
   }, []);
   
   const handleSubscribe = async (planId: string) => {
@@ -77,7 +134,7 @@ export default function AbonnementPage() {
   return (
     <div className="py-12 bg-gray-50/50 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-16">
+        <div className="text-center max-w-3xl mx-auto mb-10">
           <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
             Passez à la vitesse supérieure
           </h1>
@@ -85,6 +142,63 @@ export default function AbonnementPage() {
             Débloquez toutes les fonctionnalités de Urigi Marketing Pro et transformez votre WhatsApp en machine de vente automatisée.
           </p>
         </div>
+
+        {/* Bannière Décompte Offre de Bienvenue */}
+        {isWelcomeOfferActive && timeLeft && (
+          <div className="mb-12 max-w-4xl mx-auto bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 border-2 border-emerald-500/50 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+            <div className="absolute -right-8 -top-8 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-5">
+              <div className="flex items-center gap-4 text-center sm:text-left">
+                <div className="p-3 bg-emerald-500/20 rounded-xl border border-emerald-500/30 text-emerald-400 shrink-0 hidden sm:block">
+                  <Sparkles className="w-8 h-8 animate-pulse text-emerald-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 justify-center sm:justify-start">
+                    <span className="bg-emerald-500 text-gray-950 text-xs font-black uppercase px-2.5 py-0.5 rounded-full shadow-sm">
+                      Offre de Bienvenue -50%
+                    </span>
+                    <span className="text-xs text-emerald-300 font-semibold tracking-wide">
+                      10 premiers jours
+                    </span>
+                  </div>
+                  <h2 className="text-lg sm:text-xl font-bold text-white mt-1.5">
+                    Profitez de -50% de réduction immédiate sur tous les forfaits !
+                  </h2>
+                  <p className="text-sm text-emerald-100/80 mt-1">
+                    Tarif préférentiel appliqué automatiquement sur votre premier mois.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-center sm:items-end shrink-0 bg-black/30 px-4 py-3 rounded-xl border border-emerald-500/30">
+                <span className="text-xs text-emerald-300 font-medium flex items-center gap-1.5 mb-1">
+                  <Timer className="w-4 h-4 text-emerald-400" /> Offre expire dans :
+                </span>
+                <div className="flex items-center gap-1.5 font-mono font-bold text-white text-lg">
+                  <div className="text-center px-1">
+                    <span>{String(timeLeft.days).padStart(2, "0")}</span>
+                    <span className="text-[10px] text-gray-400 block -mt-1 font-sans">jours</span>
+                  </div>
+                  <span className="text-emerald-400 font-bold">:</span>
+                  <div className="text-center px-1">
+                    <span>{String(timeLeft.hours).padStart(2, "0")}</span>
+                    <span className="text-[10px] text-gray-400 block -mt-1 font-sans">heures</span>
+                  </div>
+                  <span className="text-emerald-400 font-bold">:</span>
+                  <div className="text-center px-1">
+                    <span>{String(timeLeft.minutes).padStart(2, "0")}</span>
+                    <span className="text-[10px] text-gray-400 block -mt-1 font-sans">min</span>
+                  </div>
+                  <span className="text-emerald-400 font-bold">:</span>
+                  <div className="text-center px-1">
+                    <span className="text-emerald-400">{String(timeLeft.seconds).padStart(2, "0")}</span>
+                    <span className="text-[10px] text-gray-400 block -mt-1 font-sans">sec</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
           {/* Plan Gratuit */}
@@ -113,23 +227,51 @@ export default function AbonnementPage() {
                 <span>Campagnes programmées</span>
               </li>
             </ul>
-            <button className="mt-8 w-full bg-gray-100 text-gray-600 rounded-xl py-3 px-4 font-semibold cursor-default">
-              Plan Actuel
-            </button>
+            {currentPlan === 'free' ? (
+              <button className="mt-8 w-full bg-gray-100 text-gray-600 rounded-xl py-3 px-4 font-semibold cursor-default">
+                Plan Actuel
+              </button>
+            ) : (
+              <button disabled className="mt-8 w-full bg-gray-50 text-gray-400 rounded-xl py-3 px-4 font-medium cursor-not-allowed">
+                Inclus
+              </button>
+            )}
           </div>
 
           {/* Plan Pro */}
           <div className="bg-primary/5 rounded-2xl shadow-md border-2 border-primary p-8 flex flex-col relative transform md:-translate-y-4">
-            <div className="absolute top-0 right-6 transform -translate-y-1/2">
-              <span className="bg-primary text-white px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full">
+            <div className="absolute top-0 right-6 transform -translate-y-1/2 flex items-center gap-1.5">
+              {isWelcomeOfferActive && (
+                <span className="bg-red-500 text-white px-2.5 py-0.5 text-xs font-black uppercase tracking-wider rounded-full shadow-sm animate-pulse">
+                  -50% BIENVENUE
+                </span>
+              )}
+              <span className="bg-primary text-white px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full shadow-sm">
                 Populaire
               </span>
             </div>
             <h3 className="text-xl font-semibold text-primary">Plan Pro</h3>
-            <div className="mt-4 flex items-baseline text-4xl font-extrabold text-gray-900">
-              4 999 FCFA
-              <span className="ml-1 text-xl font-medium text-gray-500">/mois</span>
-            </div>
+            
+            {isWelcomeOfferActive ? (
+              <div className="mt-4">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-base text-gray-400 line-through font-medium">4 999 FCFA</span>
+                  <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">
+                    -50% APPLIQUÉ
+                  </span>
+                </div>
+                <div className="flex items-baseline text-4xl font-extrabold text-emerald-600">
+                  2 499 FCFA
+                  <span className="ml-1 text-xl font-medium text-gray-500">/mois</span>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 flex items-baseline text-4xl font-extrabold text-gray-900">
+                4 999 FCFA
+                <span className="ml-1 text-xl font-medium text-gray-500">/mois</span>
+              </div>
+            )}
+
             <p className="mt-4 text-gray-600">Pour automatiser vos ventes.</p>
             <ul className="mt-8 space-y-4 flex-1">
               <li className="flex items-center">
@@ -149,22 +291,61 @@ export default function AbonnementPage() {
                 <span>Gestion multi-comptes</span>
               </li>
             </ul>
-            <button 
-              onClick={() => handleSubscribe('pro')}
-              disabled={isLoading}
-              className="mt-8 w-full bg-primary text-white hover:bg-primary/90 rounded-xl py-3 px-4 font-bold text-lg shadow-sm transition-all disabled:opacity-50 flex items-center justify-center"
-            >
-              {loadingPlan === 'pro' ? 'Initialisation...' : 'Passer au Plan Pro'}
-            </button>
+            {currentPlan === 'pro' ? (
+              <button className="mt-8 w-full bg-emerald-100 text-emerald-800 rounded-xl py-3 px-4 font-bold text-lg cursor-default">
+                ✓ Votre Plan Actuel
+              </button>
+            ) : (
+              <button 
+                onClick={() => handleSubscribe('pro')}
+                disabled={isLoading}
+                className="mt-8 w-full bg-primary text-white hover:bg-primary/90 rounded-xl py-3 px-4 font-bold text-lg shadow-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loadingPlan === 'pro' ? (
+                  'Initialisation...'
+                ) : isWelcomeOfferActive ? (
+                  <>
+                    <span>Profiter du Plan Pro</span>
+                    <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full font-semibold">2 499 FCFA</span>
+                  </>
+                ) : (
+                  'Passer au Plan Pro'
+                )}
+              </button>
+            )}
           </div>
 
           {/* Plan Elite */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 flex flex-col">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 flex flex-col relative">
+            {isWelcomeOfferActive && (
+              <div className="absolute top-0 right-6 transform -translate-y-1/2">
+                <span className="bg-red-500 text-white px-3 py-1 text-xs font-black uppercase tracking-wider rounded-full shadow-sm animate-pulse">
+                  -50% BIENVENUE
+                </span>
+              </div>
+            )}
             <h3 className="text-xl font-semibold text-gray-900">Plan Elite</h3>
-            <div className="mt-4 flex items-baseline text-4xl font-extrabold">
-              14 999 FCFA
-              <span className="ml-1 text-xl font-medium text-gray-500">/mois</span>
-            </div>
+            
+            {isWelcomeOfferActive ? (
+              <div className="mt-4">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-base text-gray-400 line-through font-medium">14 999 FCFA</span>
+                  <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">
+                    -50% APPLIQUÉ
+                  </span>
+                </div>
+                <div className="flex items-baseline text-4xl font-extrabold text-gray-900">
+                  7 499 FCFA
+                  <span className="ml-1 text-xl font-medium text-gray-500">/mois</span>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 flex items-baseline text-4xl font-extrabold text-gray-900">
+                14 999 FCFA
+                <span className="ml-1 text-xl font-medium text-gray-500">/mois</span>
+              </div>
+            )}
+
             <p className="mt-4 text-gray-500">Pour les agences et grandes équipes.</p>
             <ul className="mt-8 space-y-4 flex-1">
               <li className="flex items-center">
@@ -184,13 +365,28 @@ export default function AbonnementPage() {
                 <span className="text-gray-600 font-medium">Support VIP 24/7</span>
               </li>
             </ul>
-            <button 
-              onClick={() => handleSubscribe('elite')}
-              disabled={isLoading}
-              className="mt-8 w-full bg-gray-900 text-white hover:bg-gray-800 rounded-xl py-3 px-4 font-bold text-lg transition-colors disabled:opacity-50 flex items-center justify-center"
-            >
-              {loadingPlan === 'elite' ? 'Initialisation...' : 'Passer au Plan Elite'}
-            </button>
+            {currentPlan === 'elite' ? (
+              <button className="mt-8 w-full bg-gray-900 text-white rounded-xl py-3 px-4 font-bold text-lg cursor-default">
+                ✓ Votre Plan Actuel
+              </button>
+            ) : (
+              <button 
+                onClick={() => handleSubscribe('elite')}
+                disabled={isLoading}
+                className="mt-8 w-full bg-gray-900 text-white hover:bg-gray-800 rounded-xl py-3 px-4 font-bold text-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loadingPlan === 'elite' ? (
+                  'Initialisation...'
+                ) : isWelcomeOfferActive ? (
+                  <>
+                    <span>Profiter du Plan Elite</span>
+                    <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full font-semibold">7 499 FCFA</span>
+                  </>
+                ) : (
+                  'Passer au Plan Elite'
+                )}
+              </button>
+            )}
           </div>
         </div>
 

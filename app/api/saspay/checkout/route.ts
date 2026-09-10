@@ -4,16 +4,16 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-const PLAN_PRICING: Record<string, { amount: string; name: string; description: string }> = {
+const PLAN_PRICING: Record<string, { standardAmount: string; discountAmount: string; name: string }> = {
   pro: {
-    amount: "4999.00",
-    name: "Plan Pro",
-    description: "Abonnement Plan Pro (1 mois) - Urigi Marketing"
+    standardAmount: "4999.00",
+    discountAmount: "2499.00",
+    name: "Plan Pro"
   },
   elite: {
-    amount: "14999.00",
-    name: "Plan Elite",
-    description: "Abonnement Plan Elite (1 mois) - Urigi Marketing"
+    standardAmount: "14999.00",
+    discountAmount: "7499.00",
+    name: "Plan Elite"
   }
 };
 
@@ -44,6 +44,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Configuration serveur incomplète (SasPay)." }, { status: 500 });
     }
 
+    // Calcul de l'offre de bienvenue (-50% si inscrit depuis moins de 10 jours)
+    const userCreatedAt = new Date(user.created_at).getTime();
+    const isWelcomeOfferActive = (Date.now() - userCreatedAt) < (10 * 24 * 60 * 60 * 1000);
+
+    const finalAmount = isWelcomeOfferActive ? plan.discountAmount : plan.standardAmount;
+    const finalDescription = isWelcomeOfferActive
+      ? `Abonnement ${plan.name} (Offre Bienvenue -50%) - Urigi Marketing`
+      : `Abonnement ${plan.name} (1 mois) - Urigi Marketing`;
+
     const host = req.headers.get('host') || 'urigi-marketing.vercel.app';
     const protocol = host.includes('localhost') ? 'http' : 'https';
     const origin = `${protocol}://${host}`;
@@ -52,20 +61,26 @@ export async function POST(req: Request) {
     const customerName = user.user_metadata?.full_name || user.email?.split('@')[0] || "Client";
 
     const payload = {
-      amount: plan.amount,
+      amount: finalAmount,
       currency: "XAF",
-      description: plan.description,
+      description: finalDescription,
       customer_email: user.email,
       customer_name: customerName,
       return_url: returnUrl,
       metadata: {
         user_id: user.id,
         plan_tier: planId,
-        user_email: user.email
+        user_email: user.email,
+        discount_applied: isWelcomeOfferActive ? "50%" : "none"
       }
     };
 
-    console.log("[SasPay] Création de session checkout:", { user: user.id, plan: planId, amount: plan.amount });
+    console.log("[SasPay] Création de session checkout:", { 
+      user: user.id, 
+      plan: planId, 
+      amount: finalAmount, 
+      discount: isWelcomeOfferActive ? "50%" : "0%" 
+    });
 
     const saspayResponse = await fetch("https://api.saspay.me/api/v1/checkout-sessions/", {
       method: "POST",
@@ -97,7 +112,7 @@ export async function POST(req: Request) {
         user_id: user.id,
         payment_ref: sessionId,
         plan_tier: planId,
-        amount: Math.round(parseFloat(plan.amount)),
+        amount: Math.round(parseFloat(finalAmount)),
         status: 'pending'
       });
     } catch (dbErr) {
