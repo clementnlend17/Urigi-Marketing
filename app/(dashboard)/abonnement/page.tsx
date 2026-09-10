@@ -14,7 +14,7 @@ export default function AbonnementPage() {
   const [isWelcomeOfferActive, setIsWelcomeOfferActive] = useState(false);
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
 
-  // Gestion du Code de Réduction (Tarif Spécial 100 FCFA)
+  // Gestion du Code de Réduction (Tarif Spécial 200 FCFA)
   const [hasPromoCode, setHasPromoCode] = useState(false);
   const [promoInput, setPromoInput] = useState("");
   const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
@@ -36,7 +36,7 @@ export default function AbonnementPage() {
       const data = await res.json();
       if (res.ok && data.valid) {
         setAppliedPromo(cleanCode);
-        toast.success("🎉 Code promo appliqué ! Tarif spécial : 100 FCFA.");
+        toast.success("🎉 Code promo appliqué ! Tarif spécial : 200 FCFA.");
       } else {
         toast.error(data.error || "Code de réduction invalide.");
       }
@@ -305,7 +305,7 @@ export default function AbonnementPage() {
                   </span>
                 </div>
                 <div className="flex items-baseline text-4xl font-extrabold text-emerald-600">
-                  100 FCFA
+                  200 FCFA
                   <span className="ml-1 text-xl font-medium text-gray-500">/mois</span>
                 </div>
               </div>
@@ -383,7 +383,7 @@ export default function AbonnementPage() {
                   </div>
                   {appliedPromo ? (
                     <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-                      ✓ Tarif exceptionnel activé : 100 FCFA !
+                      ✓ Tarif exceptionnel activé : 200 FCFA !
                     </p>
                   ) : (
                     <p className="text-[11px] text-gray-500">
@@ -434,7 +434,7 @@ export default function AbonnementPage() {
                 ) : appliedPromo ? (
                   <>
                     <span>Payer mon abonnement</span>
-                    <span className="text-xs bg-white/25 text-white px-2 py-0.5 rounded-full font-bold">100 FCFA</span>
+                    <span className="text-xs bg-white/25 text-white px-2 py-0.5 rounded-full font-bold">200 FCFA</span>
                   </>
                 ) : isWelcomeOfferActive ? (
                   <>
@@ -470,7 +470,7 @@ export default function AbonnementPage() {
                   </span>
                 </div>
                 <div className="flex items-baseline text-4xl font-extrabold text-emerald-600">
-                  100 FCFA
+                  200 FCFA
                   <span className="ml-1 text-xl font-medium text-gray-500">/mois</span>
                 </div>
               </div>
@@ -548,7 +548,7 @@ export default function AbonnementPage() {
                   </div>
                   {appliedPromo ? (
                     <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-                      ✓ Tarif exceptionnel activé : 100 FCFA !
+                      ✓ Tarif exceptionnel activé : 200 FCFA !
                     </p>
                   ) : (
                     <p className="text-[11px] text-gray-500">
@@ -599,7 +599,7 @@ export default function AbonnementPage() {
                 ) : appliedPromo ? (
                   <>
                     <span>Payer mon abonnement</span>
-                    <span className="text-xs bg-white/25 text-white px-2 py-0.5 rounded-full font-bold">100 FCFA</span>
+                    <span className="text-xs bg-white/25 text-white px-2 py-0.5 rounded-full font-bold">200 FCFA</span>
                   </>
                 ) : isWelcomeOfferActive ? (
                   <>

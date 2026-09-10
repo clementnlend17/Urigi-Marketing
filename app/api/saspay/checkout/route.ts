@@ -57,9 +57,9 @@ export async function POST(req: Request) {
     let discountApplied: string;
 
     if (isPromoCodeValid) {
-      finalAmount = "100.00";
-      finalDescription = `Abonnement ${plan.name} (Tarif Spécial - 100 FCFA) - Urigi Marketing`;
-      discountApplied = "promo_100fcfa";
+      finalAmount = "200.00";
+      finalDescription = `Abonnement ${plan.name} (Tarif Spécial - 200 FCFA) - Urigi Marketing`;
+      discountApplied = "promo_200fcfa";
     } else if (isWelcomeOfferActive) {
       finalAmount = plan.discountAmount;
       finalDescription = `Abonnement ${plan.name} (Offre Bienvenue -50%) - Urigi Marketing`;
@@ -117,8 +117,18 @@ export async function POST(req: Request) {
 
     if (!saspayResponse.ok || !checkoutUrl) {
       console.error("[SasPay] Erreur lors de la création de la session:", saspayData);
+      let errorMsg = saspayData.message || saspayData.detail;
+      if (!errorMsg && saspayData.error) {
+        if (typeof saspayData.error === 'string') {
+          errorMsg = saspayData.error;
+        } else if (typeof saspayData.error === 'object') {
+          const firstKey = Object.keys(saspayData.error)[0];
+          const val = saspayData.error[firstKey];
+          errorMsg = Array.isArray(val) ? val[0] : String(val);
+        }
+      }
       return NextResponse.json({
-        error: saspayData.message || saspayData.detail || "Impossible d'initialiser le paiement avec SasPay.",
+        error: errorMsg || "Impossible d'initialiser le paiement avec SasPay.",
         details: saspayData
       }, { status: saspayResponse.status || 500 });
     }
