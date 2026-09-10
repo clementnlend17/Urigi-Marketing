@@ -108,10 +108,11 @@ export default function AdminDashboard() {
           <button
             onClick={fetchOverview}
             disabled={isRefreshing}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-all active:scale-95 disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-50"
+            title="Interroger directement l'API SasPay et synchroniser tous les paiements Mobile Money / CB"
           >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-primary" : ""}`} />
-            Actualiser
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+            {isRefreshing ? "Synchronisation..." : "Synchroniser SasPay"}
           </button>
         </div>
       </div>

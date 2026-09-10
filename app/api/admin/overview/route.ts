@@ -30,6 +30,55 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Accès refusé. Privilèges administrateur requis." }, { status: 403 });
     }
 
+    // 0. Auto-réconciliation en direct avec l'API SasPay
+    const saspaySecretKey = process.env.SASPAY_SECRET_KEY;
+    const saspayTransactionsMap: Record<string, any> = {};
+
+    if (saspaySecretKey) {
+      try {
+        const sasRes = await fetch('https://api.saspay.me/api/v1/transactions/', {
+          headers: { 'Authorization': `Bearer ${saspaySecretKey}` },
+          cache: 'no-store'
+        });
+        if (sasRes.ok) {
+          const sasData = await sasRes.json();
+          const sasTransactions = sasData.data?.results || [];
+          for (const t of sasTransactions) {
+            saspayTransactionsMap[t.reference || t.id] = t;
+            if (t.status === 'SUCCESS') {
+              const uId = t.metadata?.user_id;
+              const plan = t.metadata?.plan_tier || (Number(t.requested_amount) >= 14000 ? 'elite' : 'pro');
+              const amt = Number(t.requested_amount || t.amounts?.requested || 200);
+
+              if (uId) {
+                // Activer l'abonnement via RPC
+                try {
+                  await adminSupabase.rpc('activate_user_subscription', {
+                    p_user_id: uId,
+                    p_plan_tier: plan,
+                    p_duration_days: 30
+                  });
+                } catch {}
+
+                // Enregistrer l'intention de paiement validée
+                try {
+                  await adminSupabase.from('payment_intents').upsert({
+                    user_id: uId,
+                    payment_ref: t.reference || t.id,
+                    plan_tier: plan,
+                    amount: amt,
+                    status: 'success'
+                  }, { onConflict: 'payment_ref' });
+                } catch {}
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[Admin Overview] Auto-reconciliation SasPay (non-blocking):", err);
+      }
+    }
+
     // 1. Récupérer les Abonnements (Subscriptions)
     const { data: subscriptionsData } = await adminSupabase
       .from('subscriptions')
@@ -94,6 +143,15 @@ export async function GET(req: Request) {
       }
     } catch {}
 
+    // Emails extraits des transactions SasPay
+    Object.values(saspayTransactionsMap).forEach((t: any) => {
+      const uid = t.metadata?.user_id;
+      const email = t.metadata?.user_email || t.customer_email;
+      if (uid && email && !userEmailMap[uid]) {
+        userEmailMap[uid] = email;
+      }
+    });
+
     // Utilisateurs uniques
     const uniqueUserIds = new Set<string>();
     subscriptions.forEach(s => { if (s.user_id) uniqueUserIds.add(s.user_id); });
@@ -101,16 +159,7 @@ export async function GET(req: Request) {
     campaigns.forEach(c => { if (c.user_id) uniqueUserIds.add(c.user_id); });
     Object.keys(userEmailMap).forEach(uid => uniqueUserIds.add(uid));
 
-    let activePro = 0;
-    let activeElite = 0;
-    subscriptions.forEach(s => {
-      if (s.status === 'active') {
-        if (s.plan_tier === 'pro') activePro++;
-        if (s.plan_tier === 'elite') activeElite++;
-      }
-    });
-
-    // Revenus réels encaissés (somme des montants de transactions validées)
+    // Revenus réels encaissés (somme des transactions validées)
     let totalRevenue = 0;
     let successfulTransactionsCount = 0;
 
@@ -133,6 +182,49 @@ export async function GET(req: Request) {
       }
     });
 
+    // Détermination précise des abonnés actifs Pro / Elite
+    let activePro = 0;
+    let activeElite = 0;
+
+    // Utilisateurs avec forfaits payants effectifs
+    const users = Array.from(uniqueUserIds).map(uid => {
+      const sub = subscriptions.find(s => s.user_id === uid);
+      const isSubActive = sub?.status === 'active';
+      const isSubExpired = sub?.current_period_end ? new Date(sub.current_period_end) < new Date() : false;
+
+      // Vérifier les paiements réussis dans payment_intents
+      const successfulPayments = paymentIntents.filter(p => p.user_id === uid && (p.status === 'success' || p.status === 'completed'));
+      const hasRecentPaidPlan = successfulPayments.length > 0;
+      const latestPayment = successfulPayments[0];
+
+      let effectivePlan = 'free';
+      let effectiveStatus = 'inactive';
+
+      if (isSubActive && !isSubExpired && sub?.plan_tier) {
+        effectivePlan = sub.plan_tier;
+        effectiveStatus = 'active';
+      } else if (hasRecentPaidPlan) {
+        effectivePlan = latestPayment.plan_tier || 'pro';
+        effectiveStatus = 'active';
+      }
+
+      if (effectiveStatus === 'active') {
+        if (effectivePlan === 'elite') activeElite++;
+        else if (effectivePlan === 'pro') activePro++;
+      }
+
+      const email = userEmailMap[uid] || null;
+
+      return {
+        id: uid,
+        email,
+        planTier: effectivePlan,
+        status: effectiveStatus,
+        currentPeriodEnd: sub?.current_period_end || (hasRecentPaidPlan ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null),
+        createdAt: sub?.created_at || latestPayment?.created_at || null
+      };
+    });
+
     // Messages WhatsApp délivrés
     let totalDeliveredMessages = 0;
     campaigns.forEach(c => {
@@ -152,22 +244,6 @@ export async function GET(req: Request) {
       gateway: 'SasPay (Mobile Money / CB)'
     }));
 
-    // Liste des utilisateurs formatée pour la gestion admin
-    const users = Array.from(uniqueUserIds).map(uid => {
-      const sub = subscriptions.find(s => s.user_id === uid);
-      const isExpired = sub?.current_period_end ? new Date(sub.current_period_end) < new Date() : false;
-      const effectivePlan = isExpired ? 'free' : (sub?.plan_tier || 'free');
-      const email = userEmailMap[uid] || null;
-
-      return {
-        id: uid,
-        email,
-        planTier: effectivePlan,
-        status: isExpired ? 'expired' : (sub?.status || 'inactive'),
-        currentPeriodEnd: sub?.current_period_end || null,
-        createdAt: sub?.created_at || null
-      };
-    });
 
     return NextResponse.json({
       success: true,

@@ -36,28 +36,39 @@ export const PLAN_LIMITS = {
 export async function getUserPlan(userId: string): Promise<PlanTier> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user?.email === 'freddynlend7@gmail.com') {
+    const userEmail = session?.user?.email?.toLowerCase();
+    
+    // Les super-administrateurs ont un accès Elite illimité
+    if (userEmail === 'freddynlend7@gmail.com' || userEmail === 'clementnlend17@gmail.com') {
       return 'elite';
     }
 
-    const { data, error } = await supabase
+    // 1. Vérifier dans la table subscriptions
+    const { data: subData, error: subError } = await supabase
       .from('subscriptions')
       .select('plan_tier, status')
       .eq('user_id', userId)
       .single();
 
-    if (error || !data) {
-      console.error("[DEBUG getUserPlan] Supabase query error:", error, "data:", data, "userId:", userId);
-    } else {
-      console.log("[DEBUG getUserPlan] Supabase success. Data:", data);
+    if (subData && subData.status === 'active' && subData.plan_tier) {
+      return subData.plan_tier as PlanTier;
     }
 
-    // Si pas d'abonnement ou inactif, c'est 'free'
-    if (error || !data || data.status !== 'active') {
-      return 'free';
+    // 2. Vérification de secours dans payment_intents (transactions SasPay validées)
+    const { data: piData } = await supabase
+      .from('payment_intents')
+      .select('plan_tier')
+      .eq('user_id', userId)
+      .eq('status', 'success')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (piData && piData.plan_tier) {
+      return piData.plan_tier as PlanTier;
     }
 
-    return (data.plan_tier as PlanTier) || 'free';
+    return 'free';
   } catch (e) {
     console.error("Erreur getUserPlan:", e);
     return 'free';

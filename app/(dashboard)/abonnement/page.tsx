@@ -97,18 +97,35 @@ export default function AbonnementPage() {
       const user = session?.user;
       if (!user) return;
 
-      if (user.email === 'freddynlend7@gmail.com') {
+      if (user.email === 'freddynlend7@gmail.com' || user.email === 'clementnlend17@gmail.com') {
         setIsAdmin(true);
       }
 
-      // Vérifier l'abonnement actuel
+      // Vérifier l'abonnement actuel dans subscriptions
       const { data: sub } = await supabase
         .from('subscriptions')
         .select('plan_tier, status')
         .eq('user_id', user.id)
         .single();
 
-      const activePlan = (sub && sub.status === 'active' ? sub.plan_tier : 'free') as 'free' | 'pro' | 'elite';
+      let activePlan = (sub && sub.status === 'active' ? sub.plan_tier : 'free') as 'free' | 'pro' | 'elite';
+
+      // Fallback: vérifier dans payment_intents pour les paiements validés
+      if (activePlan === 'free') {
+        const { data: pi } = await supabase
+          .from('payment_intents')
+          .select('plan_tier')
+          .eq('user_id', user.id)
+          .eq('status', 'success')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (pi?.plan_tier) {
+          activePlan = pi.plan_tier as 'free' | 'pro' | 'elite';
+        }
+      }
+
       setCurrentPlan(activePlan);
 
       // Calcul de l'offre de bienvenue (-50% durant les 10 premiers jours)
@@ -149,11 +166,37 @@ export default function AbonnementPage() {
 
     loadUserData();
 
-    // Vérifier si retour après paiement réussi
+    // Vérifier si retour après paiement réussi et synchroniser automatiquement
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('payment') === 'success') {
-        toast.success("🎉 Paiement validé avec succès ! Votre abonnement est désormais actif.", { duration: 6000 });
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session) {
+            toast.loading("Activation automatique de votre abonnement...", { id: "sync-payment" });
+            fetch('/api/saspay/sync', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`
+              }
+            })
+            .then(res => res.json())
+            .then(data => {
+              toast.dismiss("sync-payment");
+              if (data.success && data.plan) {
+                setCurrentPlan(data.plan);
+                toast.success(`🎉 Félicitations ! Votre abonnement ${data.plan.toUpperCase()} est actif !`, { duration: 7000 });
+              } else {
+                toast.success("🎉 Paiement validé avec succès ! Votre abonnement est désormais actif.", { duration: 6000 });
+              }
+              loadUserData();
+            })
+            .catch(() => {
+              toast.dismiss("sync-payment");
+              toast.success("🎉 Paiement validé avec succès ! Votre abonnement est désormais actif.", { duration: 6000 });
+              loadUserData();
+            });
+          }
+        });
         window.history.replaceState({}, '', window.location.pathname);
       }
     }
