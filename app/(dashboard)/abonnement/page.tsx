@@ -93,7 +93,8 @@ export default function AbonnementPage() {
     let timerId: NodeJS.Timeout | null = null;
 
     const loadUserData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) return;
 
       if (user.email === 'freddynlend7@gmail.com') {

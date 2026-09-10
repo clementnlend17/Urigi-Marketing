@@ -32,19 +32,26 @@ export default function AiAgentPage() {
   }, []);
 
   const checkAccessAndFetchConfig = async () => {
-    const { data } = await supabase.auth.getUser();
-    if (data.user) {
-      setUserId(data.user.id);
-      const plan = await getUserPlan(data.user.id);
-      // L'Agent IA est disponible pour le plan Elite uniquement (ou Pro si on veut, disons Elite)
-      if (plan === "elite" || data.user.email === 'freddynlend7@gmail.com') {
-        setHasAccess(true);
-        fetchConfig(data.user.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (user) {
+        setUserId(user.id);
+        const plan = await getUserPlan(user.id);
+        if (plan === "elite" || user.email === 'freddynlend7@gmail.com') {
+          setHasAccess(true);
+          fetchConfig(user.id);
+          return;
+        } else {
+          setHasAccess(false);
+        }
       } else {
         setHasAccess(false);
-        setIsLoading(false);
       }
-    } else {
+    } catch (err) {
+      console.error("[AiAgent] Erreur:", err);
+      setHasAccess(false);
+    } finally {
       setIsLoading(false);
     }
   };

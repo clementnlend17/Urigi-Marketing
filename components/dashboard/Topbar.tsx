@@ -18,14 +18,31 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
   const router = useRouter();
 
   useEffect(() => {
+    // Vérifier immédiatement dans le cache local pour un affichage instantané
+    if (typeof window !== "undefined") {
+      const cachedAvatar = localStorage.getItem('urigi_user_avatar');
+      const cachedName = localStorage.getItem('urigi_user_name');
+      if (cachedAvatar) setAvatarUrl(cachedAvatar);
+      if (cachedName) setUserName(cachedName);
+    }
+
     const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserEmail(user.email || null);
-        const meta = user.user_metadata || {};
-        if (meta.avatar_url) setAvatarUrl(meta.avatar_url);
-        const displayName = meta.full_name || `${meta.first_name || ''} ${meta.last_name || ''}`.trim() || user.email?.split('@')[0];
-        if (displayName) setUserName(displayName);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
+        if (user) {
+          setUserEmail(user.email || null);
+          const meta = user.user_metadata || {};
+          const avatar = meta.avatar_url || (typeof window !== "undefined" ? localStorage.getItem('urigi_user_avatar') : null);
+          if (avatar) setAvatarUrl(avatar);
+          const displayName = meta.full_name || `${meta.first_name || ''} ${meta.last_name || ''}`.trim() || user.email?.split('@')[0];
+          if (displayName) {
+            setUserName(displayName);
+            if (typeof window !== "undefined") localStorage.setItem('urigi_user_name', displayName);
+          }
+        }
+      } catch (e) {
+        console.error("[Topbar] Erreur fetchUser:", e);
       }
     };
     fetchUser();

@@ -61,11 +61,13 @@ export default function SettingsPage() {
 
     const loadUserProfile = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
         if (user) {
           setUserEmail(user.email || "");
           const meta = user.user_metadata || {};
-          if (meta.avatar_url) setAvatar(meta.avatar_url);
+          const localAvatar = typeof window !== "undefined" ? localStorage.getItem('urigi_user_avatar') : null;
+          if (meta.avatar_url || localAvatar) setAvatar(meta.avatar_url || localAvatar);
           if (meta.first_name) setFirstName(meta.first_name);
           if (meta.last_name) setLastName(meta.last_name);
           if (meta.company_name) setCompanyName(meta.company_name);
@@ -207,41 +209,27 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) {
         toast.error("Veuillez vous reconnecter pour enregistrer vos modifications.");
         setIsSaving(false);
         return;
       }
 
-      let finalAvatarUrl = avatar;
+      const finalAvatarUrl = avatar || (typeof window !== "undefined" ? localStorage.getItem("urigi_user_avatar") : null);
 
-      // Si un nouveau fichier image est sélectionné, l'envoyer sur Supabase Storage
-      if (avatarFile) {
-        toast.loading("Enregistrement de la photo de profil...", { id: "avatar-upload" });
-        const fileExt = avatarFile.name.split('.').pop() || 'png';
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(fileName, avatarFile, { upsert: true });
-
-        if (uploadError) {
-          console.warn("Supabase Storage upload warning:", uploadError);
-          // Garde la dataURL de prévisualisation en repli si le stockage échoue
-        } else {
-          const { data: { publicUrl } } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(fileName);
-          finalAvatarUrl = publicUrl;
-          setAvatar(publicUrl);
-        }
-        toast.dismiss("avatar-upload");
+      if (finalAvatarUrl && typeof window !== "undefined") {
+        localStorage.setItem("urigi_user_avatar", finalAvatarUrl);
       }
 
       const fullName = `${firstName} ${lastName}`.trim() || user.user_metadata?.full_name || user.email?.split('@')[0] || "Utilisateur";
 
-      // Persistance dans Supabase Auth user_metadata
+      if (typeof window !== "undefined") {
+        localStorage.setItem("urigi_user_name", fullName);
+      }
+
+      // Persistance dans Supabase Auth user_metadata (taille ultra-légère < 6KB)
       const { data: updatedUser, error: updateError } = await supabase.auth.updateUser({
         data: {
           avatar_url: finalAvatarUrl,
@@ -252,7 +240,9 @@ export default function SettingsPage() {
         }
       });
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.warn("Supabase updateUser warning:", updateError);
+      }
 
       // Notification en direct pour Topbar et Sidebar
       if (typeof window !== "undefined") {
@@ -282,33 +272,62 @@ export default function SettingsPage() {
     setTimeout(() => setShowCopyToast(false), 3000);
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("L'image est trop volumineuse (maximum 2MB).");
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("L'image est trop volumineuse (maximum 10MB).");
       return;
     }
 
     if (!file.type.startsWith("image/")) {
-      toast.error("Veuillez sélectionner un fichier image valide (JPG, PNG).");
+      toast.error("Veuillez sélectionner un fichier image valide (JPG, PNG, WEBP).");
       return;
     }
 
     setIsUploadingAvatar(true);
-    setAvatarFile(file);
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setAvatar(event.target?.result as string);
+    try {
+      // Compression instantanée en vignette ultra-légère (120x120 ~5KB)
+      const compressedDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            const size = 120;
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+              resolve(event.target?.result as string);
+              return;
+            }
+            // Découpage centré
+            const minSide = Math.min(img.width, img.height);
+            const sx = (img.width - minSide) / 2;
+            const sy = (img.height - minSide) / 2;
+            ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+            resolve(canvas.toDataURL("image/jpeg", 0.85));
+          };
+          img.onerror = () => reject(new Error("Impossible de décoder l'image"));
+          img.src = event.target?.result as string;
+        };
+        reader.onerror = () => reject(new Error("Impossible de lire le fichier"));
+        reader.readAsDataURL(file);
+      });
+
+      setAvatar(compressedDataUrl);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("urigi_user_avatar", compressedDataUrl);
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Erreur lors du traitement de l'image.");
+    } finally {
       setIsUploadingAvatar(false);
-    };
-    reader.onerror = () => {
-      setIsUploadingAvatar(false);
-      toast.error("Impossible de lire l'image sélectionnée.");
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   return (

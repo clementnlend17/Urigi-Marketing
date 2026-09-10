@@ -36,30 +36,36 @@ export default function ChatbotPage() {
   }, []);
 
   const checkAccessAndFetchRules = async () => {
-    const { data } = await supabase.auth.getUser();
-    if (data.user) {
-      setUserId(data.user.id);
-      const plan = await getUserPlan(data.user.id);
-      
-      if (plan === "free") {
-        setHasAccess(false);
-        setIsLoading(false);
-        return;
-      }
-      
-      setHasAccess(true);
-      
-      // Récupérer les règles
-      const { data: rulesData, error } = await supabase
-        .from("chatbot_rules")
-        .select("*")
-        .order("created_at", { ascending: true });
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (user) {
+        setUserId(user.id);
+        const plan = await getUserPlan(user.id);
         
-      if (rulesData && !error) {
-        setRules(rulesData);
+        if (plan === "free") {
+          setHasAccess(false);
+          setIsLoading(false);
+          return;
+        }
+        
+        setHasAccess(true);
+        
+        // Récupérer les règles
+        const { data: rulesData, error } = await supabase
+          .from("chatbot_rules")
+          .select("*")
+          .order("created_at", { ascending: true });
+          
+        if (rulesData && !error) {
+          setRules(rulesData);
+        }
       }
+    } catch (err) {
+      console.error("[Chatbot] Erreur checkAccess:", err);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const openAddModal = () => {

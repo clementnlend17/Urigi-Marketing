@@ -34,13 +34,12 @@ export const PLAN_LIMITS = {
  * Récupère le plan de l'utilisateur courant
  */
 export async function getUserPlan(userId: string): Promise<PlanTier> {
-  // Hardcode Elite plan for admin account to guarantee it works regardless of RLS/DB caching
-  const { data: user } = await supabase.auth.getUser();
-  if (user?.user?.email === 'freddynlend7@gmail.com') {
-    return 'elite';
-  }
-
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.email === 'freddynlend7@gmail.com') {
+      return 'elite';
+    }
+
     const { data, error } = await supabase
       .from('subscriptions')
       .select('plan_tier, status')

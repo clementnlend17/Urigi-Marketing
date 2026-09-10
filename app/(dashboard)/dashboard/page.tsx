@@ -20,21 +20,25 @@ export default function DashboardPage() {
   }, []);
 
   const fetchDashboardData = async () => {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) return;
-
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
       // Fetch Contacts Count
       const { count: contactsCount } = await supabase
         .from('contacts')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', userData.user.id);
+        .eq('user_id', user.id);
 
       // Fetch Campaigns (for count and messages delivered)
       const { data: campaigns } = await supabase
         .from('campaigns')
         .select('*')
-        .eq('user_id', userData.user.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       let delivered = 0;
@@ -57,7 +61,7 @@ export default function DashboardPage() {
       });
 
     } catch (e) {
-      console.error(e);
+      console.error("[Dashboard] Erreur fetchDashboardData:", e);
     } finally {
       setIsLoading(false);
     }

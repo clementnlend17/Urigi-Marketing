@@ -42,14 +42,18 @@ export default function CampagnesPage() {
   }, []);
 
   const fetchCampaigns = async () => {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) return;
-
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
-        .eq('user_id', userData.user.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
