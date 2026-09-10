@@ -40,3 +40,6 @@ next-env.d.ts
 # WhatsApp Auth (Baileys)
 whatsapp-engine/auth_info_baileys/
 whatsapp-engine/downloads/
+
+.vercel
+.env*

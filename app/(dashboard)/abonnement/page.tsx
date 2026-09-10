@@ -22,12 +22,6 @@ export default function AbonnementPage() {
     checkAdmin();
   }, []);
   
-  // Liens de paiement Chariow
-  const chariowLinks: Record<string, string> = {
-    pro: "https://jkqiujbo.mychariow.shop/prd_aq47y1ec",
-    elite: "https://jkqiujbo.mychariow.shop/prd_jmc3wfol"
-  };
-
   const handleSubscribe = async (planId: string) => {
     setIsLoading(true);
 
@@ -51,19 +45,8 @@ export default function AbonnementPage() {
       return;
     }
 
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData?.user?.id || "";
-
-    const link = chariowLinks[planId];
-    if (link) {
-      // Append tracking parameters so Chariow can pass it back to our Webhook
-      const trackingParams = `client_reference_id=${userId}&custom=${userId}&custom_id=${userId}`;
-      const finalLink = link.includes('?') ? `${link}&${trackingParams}` : `${link}?${trackingParams}`;
-      window.location.href = finalLink;
-    } else {
-      toast.error("Ce plan n'est pas encore disponible.");
-      setIsLoading(false);
-    }
+    toast.loading("La nouvelle passerelle de paiement est en cours de configuration...", { duration: 3000 });
+    setIsLoading(false);
   };
 
   return (
@@ -190,7 +173,7 @@ export default function AbonnementPage() {
         {isAdmin && (
           <div className="mt-20 border-t border-gray-200 pt-10 text-center">
             <p className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-4">🔧 Mode Développeur (Test Uniquement)</p>
-            <p className="text-sm text-gray-600 mb-6">Utilisez ces boutons pour simuler un paiement réussi sans passer par Chariow :</p>
+            <p className="text-sm text-gray-600 mb-6">Utilisez ces boutons pour simuler instantanément un changement de plan pour les tests :</p>
             <div className="flex flex-wrap justify-center gap-4">
               <button 
                 onClick={async () => {
