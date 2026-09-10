@@ -33,6 +33,11 @@ Ce fichier est un "cerveau" ou un "point de sauvegarde" conçu pour être lu par
   - **Brouillons** : Sauvegarde et édition ultérieure.
   - **Système Anti-Blocage** : Gestion du délai entre envois.
 - **Paramètres du compte** : Gestion de la connexion WhatsApp (QR/Pairing Code).
+- **Paiements & Abonnements (SasPay)** :
+  - Intégration de la passerelle **SasPay** (Mobile Money : Orange Money, MTN MoMo, Wave, Moov + Carte bancaire).
+  - Sessions de checkout hébergées (`/api/saspay/checkout`).
+  - Validation automatique instantanée des abonnements via webhook sécurisé HMAC-SHA256 (`/api/webhooks/saspay`).
+  - Gestion des plans Pro (4 999 FCFA) et Elite (14 999 FCFA) avec mise à niveau dans Supabase (`subscriptions`).
 
 ## 5. Décisions de Design (Design Guidelines)
 1. **Style "Premium SaaS"** : Moderne, épuré, minimaliste.
@@ -48,7 +53,8 @@ Ce fichier est un "cerveau" ou un "point de sauvegarde" conçu pour être lu par
   - Toujours respecter les politiques RLS. Les tables (`contacts`, `campaigns`) doivent filtrer par `user_id = auth.uid()`.
   - Structure table `campaigns` : `id, user_id, name, type (message/status), status, total_messages, sent_messages, message_content, target_group, delay_seconds, image_base64, created_at`.
 - **Prochaines fonctionnalités prévues** : 
-  1. Système de Chatbot (Réponses automatiques).
+  1. Système de Parrainage rémunéré en pourcentage (avec paiements automatisés aux affiliés via SasPay Payouts).
   2. Planification différée des campagnes.
+  3. Suivi analytique avancé des conversions.
 
-*Document généré le 14 Août 2026. À lire systématiquement avant de reprendre le développement.*
+*Document mis à jour le 10 Septembre 2026 suite au remplacement de Monetbil/Chariow par SasPay.*
