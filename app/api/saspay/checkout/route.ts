@@ -30,7 +30,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Non authentifié. Veuillez vous connecter." }, { status: 401 });
     }
 
-    const { planId } = await req.json();
+    const { planId, promoCode } = await req.json();
 
     if (!planId || !PLAN_PRICING[planId]) {
       return NextResponse.json({ error: "Plan d'abonnement invalide." }, { status: 400 });
@@ -44,14 +44,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Configuration serveur incomplète (SasPay)." }, { status: 500 });
     }
 
+    // Vérification du code de réduction spécial (FREDDY17 = 100 FCFA)
+    const isPromoCodeValid = typeof promoCode === 'string' && promoCode.trim().toUpperCase() === 'FREDDY17';
+
     // Calcul de l'offre de bienvenue (-50% si inscrit depuis moins de 10 jours)
     const userCreatedAt = new Date(user.created_at).getTime();
     const isWelcomeOfferActive = (Date.now() - userCreatedAt) < (10 * 24 * 60 * 60 * 1000);
 
-    const finalAmount = isWelcomeOfferActive ? plan.discountAmount : plan.standardAmount;
-    const finalDescription = isWelcomeOfferActive
-      ? `Abonnement ${plan.name} (Offre Bienvenue -50%) - Urigi Marketing`
-      : `Abonnement ${plan.name} (1 mois) - Urigi Marketing`;
+    let finalAmount: string;
+    let finalDescription: string;
+    let discountApplied: string;
+
+    if (isPromoCodeValid) {
+      finalAmount = "100.00";
+      finalDescription = `Abonnement ${plan.name} (Code Réduction FREDDY17 - 100 FCFA) - Urigi Marketing`;
+      discountApplied = "promo_FREDDY17_100fcfa";
+    } else if (isWelcomeOfferActive) {
+      finalAmount = plan.discountAmount;
+      finalDescription = `Abonnement ${plan.name} (Offre Bienvenue -50%) - Urigi Marketing`;
+      discountApplied = "50%";
+    } else {
+      finalAmount = plan.standardAmount;
+      finalDescription = `Abonnement ${plan.name} (1 mois) - Urigi Marketing`;
+      discountApplied = "none";
+    }
 
     const host = req.headers.get('host') || 'urigi-marketing.vercel.app';
     const protocol = host.includes('localhost') ? 'http' : 'https';
@@ -71,7 +87,8 @@ export async function POST(req: Request) {
         user_id: user.id,
         plan_tier: planId,
         user_email: user.email,
-        discount_applied: isWelcomeOfferActive ? "50%" : "none"
+        discount_applied: discountApplied,
+        promo_code: isPromoCodeValid ? "FREDDY17" : undefined
       }
     };
 
@@ -79,7 +96,8 @@ export async function POST(req: Request) {
       user: user.id, 
       plan: planId, 
       amount: finalAmount, 
-      discount: isWelcomeOfferActive ? "50%" : "0%" 
+      promoCode: isPromoCodeValid ? "FREDDY17" : null,
+      discount: discountApplied 
     });
 
     const saspayResponse = await fetch("https://api.saspay.me/api/v1/checkout-sessions/", {
