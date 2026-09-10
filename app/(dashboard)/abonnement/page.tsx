@@ -8,10 +8,9 @@ import { supabase } from "@/lib/supabase";
 
 export default function AbonnementPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [licenseKey, setLicenseKey] = useState("");
-  const [isActivating, setIsActivating] = useState(false);
-  
+
   useEffect(() => {
     const checkAdmin = async () => {
       const { data } = await supabase.auth.getUser();
@@ -20,33 +19,59 @@ export default function AbonnementPage() {
       }
     };
     checkAdmin();
+
+    // Vérifier si retour après paiement réussi
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('payment') === 'success') {
+        toast.success("🎉 Paiement validé avec succès ! Votre abonnement est désormais actif.", { duration: 6000 });
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
   }, []);
   
   const handleSubscribe = async (planId: string) => {
+    setLoadingPlan(planId);
     setIsLoading(true);
 
-    if (isAdmin) {
-      // Simulation pour l'administrateur
-      const { data } = await supabase.auth.getUser();
-      if (data.user) {
-        const { error } = await supabase.from('subscriptions').upsert({
-          user_id: data.user.id,
-          plan_tier: planId,
-          status: 'active',
-          current_period_end: new Date(Date.now() + 30*24*60*60*1000).toISOString()
-        }, { onConflict: 'user_id' });
-        if (!error) {
-          toast.success(`[Mode Dev] Compte passé en ${planId.toUpperCase()} ! Rechargez la page.`);
-        } else {
-          toast.error("Erreur de simulation : " + error.message);
-        }
-      }
-      setIsLoading(false);
-      return;
-    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
 
-    toast.loading("La nouvelle passerelle de paiement est en cours de configuration...", { duration: 3000 });
-    setIsLoading(false);
+      if (!session) {
+        toast.error("Veuillez vous connecter pour souscrire à un abonnement.");
+        setIsLoading(false);
+        setLoadingPlan(null);
+        return;
+      }
+
+      toast.loading("Initialisation du paiement sécurisé...", { id: "saspay-checkout" });
+
+      const res = await fetch('/api/saspay/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ planId })
+      });
+
+      const data = await res.json();
+      toast.dismiss("saspay-checkout");
+
+      if (res.ok && data.checkoutUrl) {
+        toast.success("Redirection vers la page de paiement...");
+        window.location.href = data.checkoutUrl;
+      } else {
+        toast.error(data.error || "Impossible d'initialiser le paiement.");
+        setIsLoading(false);
+        setLoadingPlan(null);
+      }
+    } catch (err: any) {
+      toast.dismiss("saspay-checkout");
+      toast.error("Erreur réseau : " + (err.message || "veuillez réessayer"));
+      setIsLoading(false);
+      setLoadingPlan(null);
+    }
   };
 
   return (
@@ -127,9 +152,9 @@ export default function AbonnementPage() {
             <button 
               onClick={() => handleSubscribe('pro')}
               disabled={isLoading}
-              className="mt-8 w-full bg-primary text-white hover:bg-primary/90 rounded-xl py-3 px-4 font-bold text-lg shadow-sm transition-all"
+              className="mt-8 w-full bg-primary text-white hover:bg-primary/90 rounded-xl py-3 px-4 font-bold text-lg shadow-sm transition-all disabled:opacity-50 flex items-center justify-center"
             >
-              Passer au Plan Pro
+              {loadingPlan === 'pro' ? 'Initialisation...' : 'Passer au Plan Pro'}
             </button>
           </div>
 
@@ -162,9 +187,9 @@ export default function AbonnementPage() {
             <button 
               onClick={() => handleSubscribe('elite')}
               disabled={isLoading}
-              className="mt-8 w-full bg-gray-900 text-white hover:bg-gray-800 rounded-xl py-3 px-4 font-bold text-lg transition-colors"
+              className="mt-8 w-full bg-gray-900 text-white hover:bg-gray-800 rounded-xl py-3 px-4 font-bold text-lg transition-colors disabled:opacity-50 flex items-center justify-center"
             >
-              Passer au Plan Elite
+              {loadingPlan === 'elite' ? 'Initialisation...' : 'Passer au Plan Elite'}
             </button>
           </div>
         </div>
