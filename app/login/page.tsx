@@ -28,7 +28,15 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setError(error.message);
+      if (error.message.includes("504") || error.message.includes("timeout") || (error as any).status === 504) {
+        setError("Le serveur Supabase ne répond pas (Erreur 504 Gateway Timeout). La base de données est actuellement bloquée par un pic de charge. Veuillez redémarrer le projet depuis le tableau de bord Supabase.");
+      } else if (error.message.includes("Invalid login credentials")) {
+        setError("Adresse email ou mot de passe incorrect.");
+      } else if (error.message.includes("Email not confirmed")) {
+        setError("Veuillez confirmer votre adresse email avant de vous connecter.");
+      } else {
+        setError(error.message);
+      }
       setLoading(false);
       return;
     }
