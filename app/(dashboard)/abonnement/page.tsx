@@ -145,54 +145,54 @@ export default function AbonnementPage() {
 
         {/* Bannière Décompte Offre de Bienvenue */}
         {isWelcomeOfferActive && timeLeft && (
-          <div className="mb-12 max-w-4xl mx-auto bg-gradient-to-r from-red-950 via-rose-900 to-red-950 border-2 border-red-500/50 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
-            <div className="absolute -right-8 -top-8 w-40 h-40 bg-red-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="mb-12 max-w-4xl mx-auto bg-gradient-to-r from-[#FF6600] via-[#FF3700] to-[#E60000] border-2 border-orange-300/40 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+            <div className="absolute -right-8 -top-8 w-40 h-40 bg-white/10 rounded-full blur-3xl pointer-events-none" />
             <div className="flex flex-col sm:flex-row items-center justify-between gap-5">
               <div className="flex items-center gap-4 text-center sm:text-left">
-                <div className="p-3 bg-red-500/20 rounded-xl border border-red-500/30 text-rose-300 shrink-0 hidden sm:block">
-                  <Sparkles className="w-8 h-8 animate-pulse text-rose-300" />
+                <div className="p-3 bg-white/20 rounded-xl border border-white/30 text-amber-200 shrink-0 hidden sm:block backdrop-blur-sm">
+                  <Sparkles className="w-8 h-8 animate-pulse text-amber-200" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 justify-center sm:justify-start">
-                    <span className="bg-red-500 text-white text-xs font-black uppercase px-2.5 py-0.5 rounded-full shadow-sm">
+                    <span className="bg-white text-[#E60000] text-xs font-black uppercase px-2.5 py-0.5 rounded-full shadow-sm">
                       Offre de Bienvenue -50%
                     </span>
-                    <span className="text-xs text-rose-200 font-semibold tracking-wide">
+                    <span className="text-xs text-orange-100 font-semibold tracking-wide">
                       10 premiers jours
                     </span>
                   </div>
-                  <h2 className="text-lg sm:text-xl font-bold text-white mt-1.5">
+                  <h2 className="text-lg sm:text-xl font-bold text-white mt-1.5 drop-shadow-sm">
                     Profitez de -50% de réduction immédiate sur tous les forfaits !
                   </h2>
-                  <p className="text-sm text-rose-100/90 mt-1">
+                  <p className="text-sm text-orange-100/90 mt-1">
                     Tarif préférentiel appliqué automatiquement sur votre premier mois.
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-col items-center sm:items-end shrink-0 bg-black/40 px-4 py-3 rounded-xl border border-red-500/40">
-                <span className="text-xs text-rose-200 font-medium flex items-center gap-1.5 mb-1">
-                  <Timer className="w-4 h-4 text-rose-300" /> Offre expire dans :
+              <div className="flex flex-col items-center sm:items-end shrink-0 bg-black/35 px-4 py-3 rounded-xl border border-white/25 backdrop-blur-sm shadow-inner">
+                <span className="text-xs text-orange-100 font-medium flex items-center gap-1.5 mb-1">
+                  <Timer className="w-4 h-4 text-amber-200" /> Offre expire dans :
                 </span>
                 <div className="flex items-center gap-1.5 font-mono font-bold text-white text-lg">
                   <div className="text-center px-1">
                     <span>{String(timeLeft.days).padStart(2, "0")}</span>
-                    <span className="text-[10px] text-gray-300 block -mt-1 font-sans">jours</span>
+                    <span className="text-[10px] text-orange-200 block -mt-1 font-sans">jours</span>
                   </div>
-                  <span className="text-red-400 font-bold">:</span>
+                  <span className="text-amber-200 font-bold">:</span>
                   <div className="text-center px-1">
                     <span>{String(timeLeft.hours).padStart(2, "0")}</span>
-                    <span className="text-[10px] text-gray-300 block -mt-1 font-sans">heures</span>
+                    <span className="text-[10px] text-orange-200 block -mt-1 font-sans">heures</span>
                   </div>
-                  <span className="text-red-400 font-bold">:</span>
+                  <span className="text-amber-200 font-bold">:</span>
                   <div className="text-center px-1">
                     <span>{String(timeLeft.minutes).padStart(2, "0")}</span>
-                    <span className="text-[10px] text-gray-300 block -mt-1 font-sans">min</span>
+                    <span className="text-[10px] text-orange-200 block -mt-1 font-sans">min</span>
                   </div>
-                  <span className="text-red-400 font-bold">:</span>
+                  <span className="text-amber-200 font-bold">:</span>
                   <div className="text-center px-1">
-                    <span className="text-rose-400">{String(timeLeft.seconds).padStart(2, "0")}</span>
-                    <span className="text-[10px] text-gray-300 block -mt-1 font-sans">sec</span>
+                    <span className="text-amber-300">{String(timeLeft.seconds).padStart(2, "0")}</span>
+                    <span className="text-[10px] text-orange-200 block -mt-1 font-sans">sec</span>
                   </div>
                 </div>
               </div>
@@ -242,7 +242,7 @@ export default function AbonnementPage() {
           <div className="bg-primary/5 rounded-2xl shadow-md border-2 border-primary p-8 flex flex-col relative transform md:-translate-y-4">
             <div className="absolute top-0 right-6 transform -translate-y-1/2 flex items-center gap-1.5">
               {isWelcomeOfferActive && (
-                <span className="bg-red-500 text-white px-2.5 py-0.5 text-xs font-black uppercase tracking-wider rounded-full shadow-sm animate-pulse">
+                <span className="bg-gradient-to-r from-[#FF6600] to-[#E60000] text-white px-2.5 py-0.5 text-xs font-black uppercase tracking-wider rounded-full shadow-sm animate-pulse">
                   -50% BIENVENUE
                 </span>
               )}
@@ -256,11 +256,11 @@ export default function AbonnementPage() {
               <div className="mt-4">
                 <div className="flex items-baseline gap-2">
                   <span className="text-base text-gray-400 line-through font-medium">4 999 FCFA</span>
-                  <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">
+                  <span className="text-xs bg-orange-100 text-orange-800 font-bold px-2 py-0.5 rounded">
                     -50% APPLIQUÉ
                   </span>
                 </div>
-                <div className="flex items-baseline text-4xl font-extrabold text-emerald-600">
+                <div className="flex items-baseline text-4xl font-extrabold text-orange-600">
                   2 499 FCFA
                   <span className="ml-1 text-xl font-medium text-gray-500">/mois</span>
                 </div>
@@ -299,14 +299,18 @@ export default function AbonnementPage() {
               <button 
                 onClick={() => handleSubscribe('pro')}
                 disabled={isLoading}
-                className="mt-8 w-full bg-primary text-white hover:bg-primary/90 rounded-xl py-3 px-4 font-bold text-lg shadow-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className={`mt-8 w-full rounded-xl py-3.5 px-4 font-bold text-lg shadow-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
+                  isWelcomeOfferActive 
+                    ? 'bg-gradient-to-r from-[#FF6600] via-[#FF3700] to-[#E60000] text-white hover:opacity-95 shadow-lg shadow-orange-500/25 border border-white/30' 
+                    : 'bg-primary text-white hover:bg-primary/90'
+                }`}
               >
                 {loadingPlan === 'pro' ? (
                   'Initialisation...'
                 ) : isWelcomeOfferActive ? (
                   <>
-                    <span>Profiter du Plan Pro</span>
-                    <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full font-semibold">2 499 FCFA</span>
+                    <span>Appliquer ma réduction</span>
+                    <span className="text-xs bg-white/25 text-white px-2 py-0.5 rounded-full font-bold">2 499 FCFA</span>
                   </>
                 ) : (
                   'Passer au Plan Pro'
@@ -319,7 +323,7 @@ export default function AbonnementPage() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 flex flex-col relative">
             {isWelcomeOfferActive && (
               <div className="absolute top-0 right-6 transform -translate-y-1/2">
-                <span className="bg-red-500 text-white px-3 py-1 text-xs font-black uppercase tracking-wider rounded-full shadow-sm animate-pulse">
+                <span className="bg-gradient-to-r from-[#FF6600] to-[#E60000] text-white px-3 py-1 text-xs font-black uppercase tracking-wider rounded-full shadow-sm animate-pulse">
                   -50% BIENVENUE
                 </span>
               </div>
@@ -330,7 +334,7 @@ export default function AbonnementPage() {
               <div className="mt-4">
                 <div className="flex items-baseline gap-2">
                   <span className="text-base text-gray-400 line-through font-medium">14 999 FCFA</span>
-                  <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">
+                  <span className="text-xs bg-orange-100 text-orange-800 font-bold px-2 py-0.5 rounded">
                     -50% APPLIQUÉ
                   </span>
                 </div>
@@ -373,14 +377,18 @@ export default function AbonnementPage() {
               <button 
                 onClick={() => handleSubscribe('elite')}
                 disabled={isLoading}
-                className="mt-8 w-full bg-gray-900 text-white hover:bg-gray-800 rounded-xl py-3 px-4 font-bold text-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className={`mt-8 w-full rounded-xl py-3.5 px-4 font-bold text-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2 ${
+                  isWelcomeOfferActive 
+                    ? 'bg-gradient-to-r from-[#FF6600] via-[#FF3700] to-[#E60000] text-white hover:opacity-95 shadow-lg shadow-orange-500/25 border border-white/30' 
+                    : 'bg-gray-900 text-white hover:bg-gray-800'
+                }`}
               >
                 {loadingPlan === 'elite' ? (
                   'Initialisation...'
                 ) : isWelcomeOfferActive ? (
                   <>
-                    <span>Profiter du Plan Elite</span>
-                    <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full font-semibold">7 499 FCFA</span>
+                    <span>Appliquer ma réduction</span>
+                    <span className="text-xs bg-white/25 text-white px-2 py-0.5 rounded-full font-bold">7 499 FCFA</span>
                   </>
                 ) : (
                   'Passer au Plan Elite'
