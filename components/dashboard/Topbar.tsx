@@ -11,18 +11,33 @@ interface TopbarProps {
 
 export function Topbar({ onOpenSidebar }: TopbarProps) {
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setUserEmail(session.user.email || null);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserEmail(user.email || null);
+        const meta = user.user_metadata || {};
+        if (meta.avatar_url) setAvatarUrl(meta.avatar_url);
+        const displayName = meta.full_name || `${meta.first_name || ''} ${meta.last_name || ''}`.trim() || user.email?.split('@')[0];
+        if (displayName) setUserName(displayName);
       }
     };
     fetchUser();
+
+    // Écouter les mises à jour de profil émises depuis les paramètres
+    const handleProfileUpdate = (e: any) => {
+      if (e.detail?.avatar_url) setAvatarUrl(e.detail.avatar_url);
+      if (e.detail?.name) setUserName(e.detail.name);
+    };
+
+    window.addEventListener('user-profile-updated', handleProfileUpdate);
+    return () => window.removeEventListener('user-profile-updated', handleProfileUpdate);
   }, []);
 
   const handleLogout = async () => {
@@ -99,12 +114,16 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
               className="flex items-center gap-x-4 p-1 rounded-full hover:bg-gray-50 transition-colors cursor-pointer"
               onClick={() => { setIsProfileOpen(!isProfileOpen); setIsNotificationsOpen(false); }}
             >
-              <div className="flex items-center gap-x-3 p-1.5 rounded-full bg-gray-50 border border-gray-200 pr-4">
-                <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600">
-                  <User className="h-5 w-5" />
+              <div className="flex items-center gap-x-3 p-1 rounded-full bg-gray-50 border border-gray-200 pr-3.5">
+                <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold overflow-hidden shrink-0">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                  ) : (
+                    <User className="h-4 w-4 text-gray-600" />
+                  )}
                 </div>
-                <span className="text-sm font-medium text-gray-700 hidden sm:block">
-                  {userEmail || "Utilisateur"}
+                <span className="text-sm font-medium text-gray-700 hidden sm:block max-w-[150px] truncate">
+                  {userName || userEmail || "Utilisateur"}
                 </span>
               </div>
             </button>
@@ -113,10 +132,19 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
             {isProfileOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setIsProfileOpen(false)}></div>
-                <div className="absolute right-0 z-20 mt-2 w-56 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                  <div className="px-4 py-3 border-b border-gray-100">
-                    <p className="text-sm text-gray-500">Connecté en tant que</p>
-                    <p className="text-sm font-medium text-gray-900 truncate">{userEmail}</p>
+                <div className="absolute right-0 z-20 mt-2 w-64 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                  <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold overflow-hidden shrink-0">
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                      ) : (
+                        <User className="h-5 w-5 text-gray-600" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{userName || "Utilisateur"}</p>
+                      <p className="text-xs text-gray-500 truncate">{userEmail}</p>
+                    </div>
                   </div>
                   <div className="py-1">
                     <button

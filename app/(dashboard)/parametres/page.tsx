@@ -8,8 +8,16 @@ import { User, Shield, Bell, Smartphone, Key, Save, CheckCircle2, QrCode, X, Wif
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profil");
   const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  // Profile data states
+  const [companyName, setCompanyName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
 
   // 2FA States
   const [mfaStatus, setMfaStatus] = useState<"loading" | "unverified" | "verified">("loading");
@@ -17,7 +25,6 @@ export default function SettingsPage() {
   const [mfaQrCode, setMfaQrCode] = useState<string | null>(null);
   const [mfaSecret, setMfaSecret] = useState<string | null>(null);
   const [mfaVerifyCode, setMfaVerifyCode] = useState("");
-
 
   // States pour WhatsApp
   const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
@@ -32,7 +39,6 @@ export default function SettingsPage() {
 
   const [showCopyToast, setShowCopyToast] = useState(false);
 
-  
   const checkMfaStatus = async () => {
     try {
       const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
@@ -52,6 +58,24 @@ export default function SettingsPage() {
 
   useEffect(() => {
     checkMfaStatus();
+
+    const loadUserProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setUserEmail(user.email || "");
+          const meta = user.user_metadata || {};
+          if (meta.avatar_url) setAvatar(meta.avatar_url);
+          if (meta.first_name) setFirstName(meta.first_name);
+          if (meta.last_name) setLastName(meta.last_name);
+          if (meta.company_name) setCompanyName(meta.company_name);
+        }
+      } catch (err) {
+        console.error("Erreur chargement profil:", err);
+      }
+    };
+
+    loadUserProfile();
   }, []);
 
   const enrollMfa = async () => {
@@ -180,9 +204,76 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSave = () => {
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Veuillez vous reconnecter pour enregistrer vos modifications.");
+        setIsSaving(false);
+        return;
+      }
+
+      let finalAvatarUrl = avatar;
+
+      // Si un nouveau fichier image est sélectionné, l'envoyer sur Supabase Storage
+      if (avatarFile) {
+        toast.loading("Enregistrement de la photo de profil...", { id: "avatar-upload" });
+        const fileExt = avatarFile.name.split('.').pop() || 'png';
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, avatarFile, { upsert: true });
+
+        if (uploadError) {
+          console.warn("Supabase Storage upload warning:", uploadError);
+          // Garde la dataURL de prévisualisation en repli si le stockage échoue
+        } else {
+          const { data: { publicUrl } } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(fileName);
+          finalAvatarUrl = publicUrl;
+          setAvatar(publicUrl);
+        }
+        toast.dismiss("avatar-upload");
+      }
+
+      const fullName = `${firstName} ${lastName}`.trim() || user.user_metadata?.full_name || user.email?.split('@')[0] || "Utilisateur";
+
+      // Persistance dans Supabase Auth user_metadata
+      const { data: updatedUser, error: updateError } = await supabase.auth.updateUser({
+        data: {
+          avatar_url: finalAvatarUrl,
+          first_name: firstName,
+          last_name: lastName,
+          company_name: companyName,
+          full_name: fullName
+        }
+      });
+
+      if (updateError) throw updateError;
+
+      // Notification en direct pour Topbar et Sidebar
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("user-profile-updated", {
+          detail: {
+            avatar_url: finalAvatarUrl,
+            name: fullName
+          }
+        }));
+      }
+
+      setAvatarFile(null);
+      setIsSaved(true);
+      toast.success("Profil et photo enregistrés avec succès !");
+      setTimeout(() => setIsSaved(false), 3000);
+    } catch (err: any) {
+      console.error("Erreur enregistrement profil:", err);
+      toast.error("Erreur lors de l'enregistrement : " + (err.message || "veuillez réessayer"));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCopyApiKey = () => {
@@ -193,23 +284,31 @@ export default function SettingsPage() {
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 1024 * 1024) {
-        toast.error("L'image est trop volumineuse (maximum 1MB).");
-        return;
-      }
-      setIsUploadingAvatar(true);
-      
-      // Simulation d'un petit délai de chargement (upload)
-      setTimeout(() => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          setAvatar(event.target?.result as string);
-          setIsUploadingAvatar(false);
-        };
-        reader.readAsDataURL(file);
-      }, 800);
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("L'image est trop volumineuse (maximum 2MB).");
+      return;
     }
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Veuillez sélectionner un fichier image valide (JPG, PNG).");
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    setAvatarFile(file);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setAvatar(event.target?.result as string);
+      setIsUploadingAvatar(false);
+    };
+    reader.onerror = () => {
+      setIsUploadingAvatar(false);
+      toast.error("Impossible de lire l'image sélectionnée.");
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -274,11 +373,11 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex items-center gap-6">
-                <div className="w-24 h-24 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center text-primary text-2xl font-bold shadow-sm overflow-hidden">
+                <div className="w-24 h-24 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center text-primary text-2xl font-bold shadow-sm overflow-hidden shrink-0">
                   {avatar ? (
                     <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
-                    "FM"
+                    (firstName ? firstName[0].toUpperCase() : "") + (lastName ? lastName[0].toUpperCase() : "") || <User className="w-10 h-10 text-primary" />
                   )}
                 </div>
                 <div>
@@ -291,28 +390,51 @@ export default function SettingsPage() {
                     ) : (
                       "Changer l'avatar"
                     )}
-                    <input type="file" accept="image/jpeg, image/png, image/gif" className="hidden" onChange={handleAvatarChange} disabled={isUploadingAvatar} />
+                    <input type="file" accept="image/jpeg, image/png, image/gif, image/webp" className="hidden" onChange={handleAvatarChange} disabled={isUploadingAvatar} />
                   </label>
-                  <p className="mt-2 text-xs text-gray-500">JPG, GIF ou PNG. 1MB max.</p>
+                  <p className="mt-2 text-xs text-gray-500">JPG, PNG ou WebP. 2MB max.</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="col-span-1 md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom de l'entreprise</label>
-                  <input type="text" defaultValue="Urigi Marketing Pro" className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all sm:text-sm" />
+                  <input 
+                    type="text" 
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder="Ex: Mon Entreprise SARL"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all sm:text-sm" 
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Prénom</label>
-                  <input type="text" defaultValue="Freddy" className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all sm:text-sm" />
+                  <input 
+                    type="text" 
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Ex: Freddy"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all sm:text-sm" 
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom</label>
-                  <input type="text" defaultValue="Mboa" className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all sm:text-sm" />
+                  <input 
+                    type="text" 
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Ex: Mboa"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all sm:text-sm" 
+                  />
                 </div>
                 <div className="col-span-1 md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Adresse Email</label>
-                  <input type="email" defaultValue="freddy@urigi.com" className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-500 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all sm:text-sm bg-gray-50 cursor-not-allowed" readOnly />
+                  <input 
+                    type="email" 
+                    value={userEmail}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-500 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all sm:text-sm bg-gray-50 cursor-not-allowed" 
+                    readOnly 
+                  />
                 </div>
               </div>
             </div>
@@ -570,9 +692,15 @@ export default function SettingsPage() {
       <div className="flex justify-end pt-4">
         <button 
           onClick={handleSave}
-          className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary text-white text-sm font-medium rounded-lg shadow-sm hover:bg-primary-hover hover:-translate-y-0.5 transition-all"
+          disabled={isSaving}
+          className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary text-white text-sm font-medium rounded-lg shadow-sm hover:bg-primary-hover hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          {isSaved ? (
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Enregistrement en cours...
+            </>
+          ) : isSaved ? (
             <>
               <CheckCircle2 className="w-4 h-4" />
               Sauvegardé

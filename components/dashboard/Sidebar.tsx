@@ -33,20 +33,34 @@ interface SidebarProps {
 export function Sidebar({ className, isOpen, setIsOpen }: SidebarProps) {
   const currentPath = usePathname() || "/dashboard"; 
   const [userPlan, setUserPlan] = useState<string>("Chargement...");
+  const [userName, setUserName] = useState<string>("Utilisateur");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const fetchPlan = async () => {
+    const fetchPlanAndUser = async () => {
       const { data } = await supabase.auth.getUser();
       if (data.user) {
         if (data.user.email === 'freddynlend7@gmail.com') setIsAdmin(true);
         const plan = await getUserPlan(data.user.id);
         setUserPlan(`Plan ${plan.charAt(0).toUpperCase() + plan.slice(1)}`);
+        const meta = data.user.user_metadata || {};
+        if (meta.avatar_url) setAvatarUrl(meta.avatar_url);
+        const displayName = meta.full_name || `${meta.first_name || ''} ${meta.last_name || ''}`.trim() || data.user.email?.split('@')[0];
+        if (displayName) setUserName(displayName);
       } else {
         setUserPlan("Non connecté");
       }
     };
-    fetchPlan();
+    fetchPlanAndUser();
+
+    const handleProfileUpdate = (e: any) => {
+      if (e.detail?.avatar_url) setAvatarUrl(e.detail.avatar_url);
+      if (e.detail?.name) setUserName(e.detail.name);
+    };
+
+    window.addEventListener('user-profile-updated', handleProfileUpdate);
+    return () => window.removeEventListener('user-profile-updated', handleProfileUpdate);
   }, []);
 
   return (
@@ -63,12 +77,16 @@ export function Sidebar({ className, isOpen, setIsOpen }: SidebarProps) {
 
       <div className="flex flex-1 flex-col overflow-y-auto pt-6">
         <div className="px-4 mb-4">
-          <div className="flex items-center gap-2 rounded-lg bg-gray-50 p-2 border border-gray-100">
-            <div className="h-8 w-8 rounded bg-primary/20 flex items-center justify-center text-primary font-bold">
-              G
+          <div className="flex items-center gap-2.5 rounded-lg bg-gray-50 p-2 border border-gray-100">
+            <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold overflow-hidden shrink-0">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+              ) : (
+                userName[0]?.toUpperCase() || "U"
+              )}
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold">Urigi User</span>
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="text-sm font-semibold truncate">{userName}</span>
               <span className="text-xs text-gray-500">{userPlan}</span>
             </div>
           </div>
