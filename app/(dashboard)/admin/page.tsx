@@ -19,19 +19,17 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    checkAdminAndLoad();
+    const checkAndRedirect = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const ADMIN_EMAILS = ['freddynlend7@gmail.com', 'clementnlend17@gmail.com'];
+      if (session?.user?.email && ADMIN_EMAILS.includes(session.user.email.toLowerCase())) {
+        window.location.href = "/admin/dashboard";
+      } else {
+        window.location.href = "/dashboard";
+      }
+    };
+    checkAndRedirect();
   }, []);
-
-  const checkAdminAndLoad = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user?.email === 'freddynlend7@gmail.com') {
-      setIsAdmin(true);
-      fetchRequests();
-    } else {
-      setIsAdmin(false);
-      setIsLoading(false);
-    }
-  };
 
   const fetchRequests = async () => {
     setIsLoading(true);

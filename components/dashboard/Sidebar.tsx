@@ -51,7 +51,8 @@ export function Sidebar({ className, isOpen, setIsOpen }: SidebarProps) {
         const { data: { session } } = await supabase.auth.getSession();
         const user = session?.user;
         if (user) {
-          if (user.email === 'freddynlend7@gmail.com') setIsAdmin(true);
+          const ADMIN_EMAILS = ['freddynlend7@gmail.com', 'clementnlend17@gmail.com'];
+          if (ADMIN_EMAILS.includes(user.email?.toLowerCase() || '')) setIsAdmin(true);
           const meta = user.user_metadata || {};
           const avatar = meta.avatar_url || (typeof window !== "undefined" ? localStorage.getItem('urigi_user_avatar') : null);
           if (avatar) setAvatarUrl(avatar);
@@ -180,15 +181,15 @@ export function Sidebar({ className, isOpen, setIsOpen }: SidebarProps) {
               {isAdmin && (
                 <li>
                   <Link
-                    href="/admin"
+                    href="/admin/dashboard"
                     onClick={() => setIsOpen?.(false)}
                     className={cn(
                       "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-medium text-red-600 hover:text-red-700 hover:bg-red-50",
-                      currentPath === "/admin" && "bg-red-50 text-red-700"
+                      currentPath.startsWith("/admin") && "bg-red-50 text-red-700"
                     )}
                   >
                     <ShieldCheck className="h-5 w-5 shrink-0" aria-hidden="true" />
-                    Administration
+                    Administration (SaaS)
                   </Link>
                 </li>
               )}

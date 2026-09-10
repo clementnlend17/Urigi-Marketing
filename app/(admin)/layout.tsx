@@ -8,12 +8,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-const ADMIN_EMAIL = "freddynlend7@gmail.com";
+const ADMIN_EMAILS = [
+  "freddynlend7@gmail.com",
+  "clementnlend17@gmail.com"
+];
 
 const navigation = [
   { name: "Tableau de bord", href: "/admin/dashboard", icon: LayoutDashboard },
+  { name: "Abonnements & Revenus", href: "/admin/abonnements", icon: CreditCard },
   { name: "Utilisateurs", href: "/admin/utilisateurs", icon: Users },
-  { name: "Abonnements", href: "/admin/abonnements", icon: CreditCard },
   { name: "Paramètres", href: "/admin/parametres", icon: Settings },
 ];
 
@@ -29,20 +32,26 @@ export default function AdminLayout({
 
   useEffect(() => {
     const checkAdmin = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        router.push("/login");
-        return;
-      }
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session || !session.user?.email) {
+          router.push("/login");
+          return;
+        }
 
-      if (session.user.email !== ADMIN_EMAIL) {
-        router.push("/dashboard"); // Redirige les non-admins vers leur espace classique
-        return;
-      }
+        const emailLower = session.user.email.toLowerCase();
+        if (!ADMIN_EMAILS.includes(emailLower)) {
+          router.push("/dashboard"); // Redirige les non-admins vers leur espace classique
+          return;
+        }
 
-      setUserEmail(session.user.email);
-      setIsAuthorized(true);
+        setUserEmail(session.user.email);
+        setIsAuthorized(true);
+      } catch (err) {
+        console.error("[AdminLayout] Erreur vérification admin:", err);
+        router.push("/dashboard");
+      }
     };
 
     checkAdmin();
