@@ -100,47 +100,47 @@ export function WelcomeOfferBanner() {
   const formatNumber = (num: number) => String(num).padStart(2, "0");
 
   return (
-    <div className="relative z-50 bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 text-white border-b border-emerald-700/40 px-4 py-2.5 sm:px-6 shadow-md">
+    <div className="relative z-50 bg-gradient-to-r from-red-950 via-rose-900 to-red-950 text-white border-b border-red-700/50 px-4 py-2.5 sm:px-6 shadow-md">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-xs sm:text-sm">
         
         {/* Titre & Message Promotionnel */}
         <div className="flex items-center gap-2.5 text-center md:text-left flex-wrap justify-center md:justify-start">
-          <span className="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-300 font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/30 text-xs uppercase tracking-wider animate-pulse">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="inline-flex items-center gap-1 bg-red-500/30 text-red-200 font-bold px-2.5 py-0.5 rounded-full border border-red-400/40 text-xs uppercase tracking-wider animate-pulse">
+            <Sparkles className="w-3.5 h-3.5 text-rose-300" />
             Offre de Bienvenue -50%
           </span>
-          <span className="text-gray-200">
+          <span className="text-rose-100">
             Profitez de <strong className="text-white font-bold">-50% sur tous les forfaits</strong> pour automatiser votre WhatsApp !
           </span>
         </div>
 
         {/* Compteur à rebours & Bouton CTA */}
         <div className="flex items-center gap-4 shrink-0">
-          <div className="flex items-center gap-1 text-emerald-300 font-medium">
-            <Timer className="w-4 h-4 text-emerald-400 mr-1 shrink-0" />
-            <span className="text-xs text-gray-300 hidden sm:inline mr-1">Expire dans :</span>
-            <div className="flex items-center gap-1 font-mono font-bold text-white bg-black/30 px-2.5 py-1 rounded-lg border border-emerald-500/30 shadow-inner">
+          <div className="flex items-center gap-1 text-rose-200 font-medium">
+            <Timer className="w-4 h-4 text-rose-300 mr-1 shrink-0" />
+            <span className="text-xs text-rose-200 hidden sm:inline mr-1">Expire dans :</span>
+            <div className="flex items-center gap-1 font-mono font-bold text-white bg-black/40 px-2.5 py-1 rounded-lg border border-red-500/40 shadow-inner">
               <span>{formatNumber(timeLeft.days)}j</span>
-              <span className="text-emerald-400">:</span>
+              <span className="text-red-400">:</span>
               <span>{formatNumber(timeLeft.hours)}h</span>
-              <span className="text-emerald-400">:</span>
+              <span className="text-red-400">:</span>
               <span>{formatNumber(timeLeft.minutes)}m</span>
-              <span className="text-emerald-400">:</span>
-              <span className="text-emerald-400 w-5 inline-block">{formatNumber(timeLeft.seconds)}s</span>
+              <span className="text-red-400">:</span>
+              <span className="text-rose-300 w-5 inline-block">{formatNumber(timeLeft.seconds)}s</span>
             </div>
           </div>
 
           <Link
             href="/abonnement"
-            className="inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-gray-950 font-bold px-3.5 py-1.5 rounded-lg shadow-sm hover:shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] text-xs uppercase tracking-wider"
+            className="inline-flex items-center gap-1.5 bg-white hover:bg-rose-50 text-red-900 font-black px-3.5 py-1.5 rounded-lg shadow-md hover:shadow-red-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] text-xs uppercase tracking-wider"
           >
             <span>Profiter de l'offre (-50%)</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="w-3.5 h-3.5 text-red-700" />
           </Link>
 
           <button
             onClick={handleDismiss}
-            className="text-gray-400 hover:text-white transition-colors p-1 rounded-md hover:bg-white/10"
+            className="text-rose-200 hover:text-white transition-colors p-1 rounded-md hover:bg-white/10"
             title="Masquer la bannière"
           >
             <X className="w-4 h-4" />

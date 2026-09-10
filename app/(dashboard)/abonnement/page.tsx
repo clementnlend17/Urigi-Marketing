@@ -145,54 +145,54 @@ export default function AbonnementPage() {
 
         {/* Bannière Décompte Offre de Bienvenue */}
         {isWelcomeOfferActive && timeLeft && (
-          <div className="mb-12 max-w-4xl mx-auto bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 border-2 border-emerald-500/50 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
-            <div className="absolute -right-8 -top-8 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="mb-12 max-w-4xl mx-auto bg-gradient-to-r from-red-950 via-rose-900 to-red-950 border-2 border-red-500/50 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+            <div className="absolute -right-8 -top-8 w-40 h-40 bg-red-500/10 rounded-full blur-3xl pointer-events-none" />
             <div className="flex flex-col sm:flex-row items-center justify-between gap-5">
               <div className="flex items-center gap-4 text-center sm:text-left">
-                <div className="p-3 bg-emerald-500/20 rounded-xl border border-emerald-500/30 text-emerald-400 shrink-0 hidden sm:block">
-                  <Sparkles className="w-8 h-8 animate-pulse text-emerald-400" />
+                <div className="p-3 bg-red-500/20 rounded-xl border border-red-500/30 text-rose-300 shrink-0 hidden sm:block">
+                  <Sparkles className="w-8 h-8 animate-pulse text-rose-300" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 justify-center sm:justify-start">
-                    <span className="bg-emerald-500 text-gray-950 text-xs font-black uppercase px-2.5 py-0.5 rounded-full shadow-sm">
+                    <span className="bg-red-500 text-white text-xs font-black uppercase px-2.5 py-0.5 rounded-full shadow-sm">
                       Offre de Bienvenue -50%
                     </span>
-                    <span className="text-xs text-emerald-300 font-semibold tracking-wide">
+                    <span className="text-xs text-rose-200 font-semibold tracking-wide">
                       10 premiers jours
                     </span>
                   </div>
                   <h2 className="text-lg sm:text-xl font-bold text-white mt-1.5">
                     Profitez de -50% de réduction immédiate sur tous les forfaits !
                   </h2>
-                  <p className="text-sm text-emerald-100/80 mt-1">
+                  <p className="text-sm text-rose-100/90 mt-1">
                     Tarif préférentiel appliqué automatiquement sur votre premier mois.
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-col items-center sm:items-end shrink-0 bg-black/30 px-4 py-3 rounded-xl border border-emerald-500/30">
-                <span className="text-xs text-emerald-300 font-medium flex items-center gap-1.5 mb-1">
-                  <Timer className="w-4 h-4 text-emerald-400" /> Offre expire dans :
+              <div className="flex flex-col items-center sm:items-end shrink-0 bg-black/40 px-4 py-3 rounded-xl border border-red-500/40">
+                <span className="text-xs text-rose-200 font-medium flex items-center gap-1.5 mb-1">
+                  <Timer className="w-4 h-4 text-rose-300" /> Offre expire dans :
                 </span>
                 <div className="flex items-center gap-1.5 font-mono font-bold text-white text-lg">
                   <div className="text-center px-1">
                     <span>{String(timeLeft.days).padStart(2, "0")}</span>
-                    <span className="text-[10px] text-gray-400 block -mt-1 font-sans">jours</span>
+                    <span className="text-[10px] text-gray-300 block -mt-1 font-sans">jours</span>
                   </div>
-                  <span className="text-emerald-400 font-bold">:</span>
+                  <span className="text-red-400 font-bold">:</span>
                   <div className="text-center px-1">
                     <span>{String(timeLeft.hours).padStart(2, "0")}</span>
-                    <span className="text-[10px] text-gray-400 block -mt-1 font-sans">heures</span>
+                    <span className="text-[10px] text-gray-300 block -mt-1 font-sans">heures</span>
                   </div>
-                  <span className="text-emerald-400 font-bold">:</span>
+                  <span className="text-red-400 font-bold">:</span>
                   <div className="text-center px-1">
                     <span>{String(timeLeft.minutes).padStart(2, "0")}</span>
-                    <span className="text-[10px] text-gray-400 block -mt-1 font-sans">min</span>
+                    <span className="text-[10px] text-gray-300 block -mt-1 font-sans">min</span>
                   </div>
-                  <span className="text-emerald-400 font-bold">:</span>
+                  <span className="text-red-400 font-bold">:</span>
                   <div className="text-center px-1">
-                    <span className="text-emerald-400">{String(timeLeft.seconds).padStart(2, "0")}</span>
-                    <span className="text-[10px] text-gray-400 block -mt-1 font-sans">sec</span>
+                    <span className="text-rose-400">{String(timeLeft.seconds).padStart(2, "0")}</span>
+                    <span className="text-[10px] text-gray-300 block -mt-1 font-sans">sec</span>
                   </div>
                 </div>
               </div>
