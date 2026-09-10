@@ -99,20 +99,31 @@ export async function POST(req: Request) {
       }
 
       if (userId) {
-        // Mettre à jour ou activer l'abonnement
-        const { error: subError } = await adminSupabase
-          .from('subscriptions')
-          .upsert({
-            user_id: userId,
-            plan_tier: planTier,
-            status: 'active',
-            current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // +30 jours
-          }, { onConflict: 'user_id' });
+        // Appeler la fonction RPC sécurisée (SECURITY DEFINER) pour activer l'abonnement
+        const { error: rpcError } = await adminSupabase.rpc('activate_user_subscription', {
+          p_user_id: userId,
+          p_plan_tier: planTier,
+          p_duration_days: 30
+        });
 
-        if (subError) {
-          console.error("[SasPay Webhook] Erreur mise à jour subscription:", subError);
+        if (rpcError) {
+          console.warn("[SasPay Webhook] Fallback upsert après RPC:", rpcError);
+          const { error: subError } = await adminSupabase
+            .from('subscriptions')
+            .upsert({
+              user_id: userId,
+              plan_tier: planTier,
+              status: 'active',
+              current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            }, { onConflict: 'user_id' });
+
+          if (subError) {
+            console.error("[SasPay Webhook] Erreur mise à jour subscription:", subError);
+          } else {
+            console.log(`[SasPay Webhook] Abonnement ${planTier.toUpperCase()} activé pour ${userId} (upsert)`);
+          }
         } else {
-          console.log(`[SasPay Webhook] Abonnement ${planTier.toUpperCase()} activé pour ${userId}`);
+          console.log(`[SasPay Webhook] Abonnement ${planTier.toUpperCase()} activé pour ${userId} (via RPC)`);
         }
 
         // Mettre à jour l'intention si trouvée
