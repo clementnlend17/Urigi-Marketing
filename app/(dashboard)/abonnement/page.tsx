@@ -14,19 +14,47 @@ export default function AbonnementPage() {
   const [isWelcomeOfferActive, setIsWelcomeOfferActive] = useState(false);
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
 
-  // Gestion du Code de Réduction (Tarif Spécial 200 FCFA)
-  const [hasPromoCode, setHasPromoCode] = useState(false);
-  const [promoInput, setPromoInput] = useState("");
-  const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
-  const [isVerifyingPromo, setIsVerifyingPromo] = useState(false);
+  // Gestion indépendante des Codes de Réduction par plan (Tarif Spécial 200 FCFA)
+  const [promoState, setPromoState] = useState<{
+    pro: { isOpen: boolean; input: string; applied: string | null; isVerifying: boolean };
+    elite: { isOpen: boolean; input: string; applied: string | null; isVerifying: boolean };
+  }>({
+    pro: { isOpen: false, input: "", applied: null, isVerifying: false },
+    elite: { isOpen: false, input: "", applied: null, isVerifying: false }
+  });
 
-  const handleApplyPromo = async () => {
-    const cleanCode = promoInput.trim().toUpperCase();
+  const handleTogglePromo = (planId: 'pro' | 'elite', checked: boolean) => {
+    setPromoState(prev => ({
+      ...prev,
+      [planId]: {
+        ...prev[planId],
+        isOpen: checked,
+        input: checked ? prev[planId].input : "",
+        applied: checked ? prev[planId].applied : null
+      }
+    }));
+  };
+
+  const handlePromoInputChange = (planId: 'pro' | 'elite', val: string) => {
+    setPromoState(prev => ({
+      ...prev,
+      [planId]: {
+        ...prev[planId],
+        input: val.toUpperCase()
+      }
+    }));
+  };
+
+  const handleApplyPromo = async (planId: 'pro' | 'elite') => {
+    const cleanCode = promoState[planId].input.trim().toUpperCase();
     if (!cleanCode) {
       toast.error("Veuillez saisir votre code de réduction.");
       return;
     }
-    setIsVerifyingPromo(true);
+    setPromoState(prev => ({
+      ...prev,
+      [planId]: { ...prev[planId], isVerifying: true }
+    }));
     try {
       const res = await fetch('/api/promo/verify', {
         method: 'POST',
@@ -35,7 +63,10 @@ export default function AbonnementPage() {
       });
       const data = await res.json();
       if (res.ok && data.valid) {
-        setAppliedPromo(cleanCode);
+        setPromoState(prev => ({
+          ...prev,
+          [planId]: { ...prev[planId], applied: cleanCode }
+        }));
         toast.success("🎉 Code promo appliqué ! Tarif spécial : 200 FCFA.");
       } else {
         toast.error(data.error || "Code de réduction invalide.");
@@ -43,13 +74,18 @@ export default function AbonnementPage() {
     } catch {
       toast.error("Erreur lors de la vérification du code.");
     } finally {
-      setIsVerifyingPromo(false);
+      setPromoState(prev => ({
+        ...prev,
+        [planId]: { ...prev[planId], isVerifying: false }
+      }));
     }
   };
 
-  const handleRemovePromo = () => {
-    setAppliedPromo(null);
-    setPromoInput("");
+  const handleRemovePromo = (planId: 'pro' | 'elite') => {
+    setPromoState(prev => ({
+      ...prev,
+      [planId]: { ...prev[planId], applied: null, input: "" }
+    }));
     toast.success("Code de réduction retiré.");
   };
 
@@ -142,6 +178,8 @@ export default function AbonnementPage() {
 
       toast.loading("Initialisation du paiement sécurisé...", { id: "saspay-checkout" });
 
+      const activePromo = planId === 'pro' ? promoState.pro.applied : planId === 'elite' ? promoState.elite.applied : null;
+
       const res = await fetch('/api/saspay/checkout', {
         method: 'POST',
         headers: {
@@ -150,7 +188,7 @@ export default function AbonnementPage() {
         },
         body: JSON.stringify({ 
           planId,
-          promoCode: appliedPromo || undefined
+          promoCode: activePromo || undefined
         })
       });
 
@@ -294,7 +332,7 @@ export default function AbonnementPage() {
             </div>
             <h3 className="text-xl font-semibold text-primary">Plan Pro</h3>
             
-            {appliedPromo ? (
+            {promoState.pro.applied ? (
               <div className="mt-4">
                 <div className="flex items-baseline gap-2">
                   <span className="text-base text-gray-400 line-through font-medium">
@@ -334,38 +372,34 @@ export default function AbonnementPage() {
               <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-gray-700 hover:text-gray-900 transition-colors">
                 <input
                   type="checkbox"
-                  checked={hasPromoCode}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setHasPromoCode(checked);
-                    if (!checked) handleRemovePromo();
-                  }}
+                  checked={promoState.pro.isOpen}
+                  onChange={(e) => handleTogglePromo('pro', e.target.checked)}
                   className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 transition cursor-pointer"
                 />
                 <span>J'ai un code de réduction</span>
               </label>
 
-              {hasPromoCode && (
+              {promoState.pro.isOpen && (
                 <div className="mt-2.5 space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="flex items-center gap-1.5">
                     <div className="relative flex-1">
                       <input
                         type="text"
-                        value={promoInput}
-                        onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleApplyPromo(); }}
+                        value={promoState.pro.input}
+                        onChange={(e) => handlePromoInputChange('pro', e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleApplyPromo('pro'); }}
                         placeholder="Entrez votre code"
-                        disabled={appliedPromo !== null}
+                        disabled={promoState.pro.applied !== null}
                         className="w-full px-2.5 py-1.5 text-xs uppercase font-mono font-bold tracking-wider rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition disabled:bg-gray-100 disabled:text-gray-500"
                       />
-                      {appliedPromo && (
+                      {promoState.pro.applied && (
                         <CheckCircle2 className="w-4 h-4 text-emerald-500 absolute right-2 top-1/2 -translate-y-1/2" />
                       )}
                     </div>
-                    {appliedPromo ? (
+                    {promoState.pro.applied ? (
                       <button
                         type="button"
-                        onClick={handleRemovePromo}
+                        onClick={() => handleRemovePromo('pro')}
                         className="px-2 py-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 font-bold rounded-lg border border-red-200 transition whitespace-nowrap"
                       >
                         Retirer
@@ -373,15 +407,15 @@ export default function AbonnementPage() {
                     ) : (
                       <button
                         type="button"
-                        onClick={handleApplyPromo}
-                        disabled={isVerifyingPromo}
+                        onClick={() => handleApplyPromo('pro')}
+                        disabled={promoState.pro.isVerifying}
                         className="px-2.5 py-1.5 text-xs bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-lg transition shadow-sm whitespace-nowrap disabled:opacity-50"
                       >
-                        {isVerifyingPromo ? '...' : 'Appliquer'}
+                        {promoState.pro.isVerifying ? '...' : 'Appliquer'}
                       </button>
                     )}
                   </div>
-                  {appliedPromo ? (
+                  {promoState.pro.applied ? (
                     <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
                       ✓ Tarif exceptionnel activé : 200 FCFA !
                     </p>
@@ -422,7 +456,7 @@ export default function AbonnementPage() {
                 onClick={() => handleSubscribe('pro')}
                 disabled={isLoading}
                 className={`mt-8 w-full rounded-xl py-3.5 px-4 font-bold text-lg shadow-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
-                  appliedPromo
+                  promoState.pro.applied
                     ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/25 border border-emerald-400/40'
                     : isWelcomeOfferActive 
                     ? 'bg-gradient-to-r from-[#FF6600] via-[#FF3700] to-[#E60000] text-white hover:opacity-95 shadow-lg shadow-orange-500/25 border border-white/30' 
@@ -431,7 +465,7 @@ export default function AbonnementPage() {
               >
                 {loadingPlan === 'pro' ? (
                   'Initialisation...'
-                ) : appliedPromo ? (
+                ) : promoState.pro.applied ? (
                   <>
                     <span>Payer mon abonnement</span>
                     <span className="text-xs bg-white/25 text-white px-2 py-0.5 rounded-full font-bold">200 FCFA</span>
@@ -459,7 +493,7 @@ export default function AbonnementPage() {
             )}
             <h3 className="text-xl font-semibold text-gray-900">Plan Elite</h3>
             
-            {appliedPromo ? (
+            {promoState.elite.applied ? (
               <div className="mt-4">
                 <div className="flex items-baseline gap-2">
                   <span className="text-base text-gray-400 line-through font-medium">
@@ -499,38 +533,34 @@ export default function AbonnementPage() {
               <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-gray-700 hover:text-gray-900 transition-colors">
                 <input
                   type="checkbox"
-                  checked={hasPromoCode}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setHasPromoCode(checked);
-                    if (!checked) handleRemovePromo();
-                  }}
+                  checked={promoState.elite.isOpen}
+                  onChange={(e) => handleTogglePromo('elite', e.target.checked)}
                   className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 transition cursor-pointer"
                 />
                 <span>J'ai un code de réduction</span>
               </label>
 
-              {hasPromoCode && (
+              {promoState.elite.isOpen && (
                 <div className="mt-2.5 space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="flex items-center gap-1.5">
                     <div className="relative flex-1">
                       <input
                         type="text"
-                        value={promoInput}
-                        onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleApplyPromo(); }}
+                        value={promoState.elite.input}
+                        onChange={(e) => handlePromoInputChange('elite', e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleApplyPromo('elite'); }}
                         placeholder="Entrez votre code"
-                        disabled={appliedPromo !== null}
+                        disabled={promoState.elite.applied !== null}
                         className="w-full px-2.5 py-1.5 text-xs uppercase font-mono font-bold tracking-wider rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition disabled:bg-gray-100 disabled:text-gray-500"
                       />
-                      {appliedPromo && (
+                      {promoState.elite.applied && (
                         <CheckCircle2 className="w-4 h-4 text-emerald-500 absolute right-2 top-1/2 -translate-y-1/2" />
                       )}
                     </div>
-                    {appliedPromo ? (
+                    {promoState.elite.applied ? (
                       <button
                         type="button"
-                        onClick={handleRemovePromo}
+                        onClick={() => handleRemovePromo('elite')}
                         className="px-2 py-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 font-bold rounded-lg border border-red-200 transition whitespace-nowrap"
                       >
                         Retirer
@@ -538,15 +568,15 @@ export default function AbonnementPage() {
                     ) : (
                       <button
                         type="button"
-                        onClick={handleApplyPromo}
-                        disabled={isVerifyingPromo}
+                        onClick={() => handleApplyPromo('elite')}
+                        disabled={promoState.elite.isVerifying}
                         className="px-2.5 py-1.5 text-xs bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-lg transition shadow-sm whitespace-nowrap disabled:opacity-50"
                       >
-                        {isVerifyingPromo ? '...' : 'Appliquer'}
+                        {promoState.elite.isVerifying ? '...' : 'Appliquer'}
                       </button>
                     )}
                   </div>
-                  {appliedPromo ? (
+                  {promoState.elite.applied ? (
                     <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
                       ✓ Tarif exceptionnel activé : 200 FCFA !
                     </p>
@@ -587,7 +617,7 @@ export default function AbonnementPage() {
                 onClick={() => handleSubscribe('elite')}
                 disabled={isLoading}
                 className={`mt-8 w-full rounded-xl py-3.5 px-4 font-bold text-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2 ${
-                  appliedPromo
+                  promoState.elite.applied
                     ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/25 border border-emerald-400/40'
                     : isWelcomeOfferActive 
                     ? 'bg-gradient-to-r from-[#FF6600] via-[#FF3700] to-[#E60000] text-white hover:opacity-95 shadow-lg shadow-orange-500/25 border border-white/30' 
@@ -596,7 +626,7 @@ export default function AbonnementPage() {
               >
                 {loadingPlan === 'elite' ? (
                   'Initialisation...'
-                ) : appliedPromo ? (
+                ) : promoState.elite.applied ? (
                   <>
                     <span>Payer mon abonnement</span>
                     <span className="text-xs bg-white/25 text-white px-2 py-0.5 rounded-full font-bold">200 FCFA</span>
