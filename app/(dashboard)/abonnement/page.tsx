@@ -14,22 +14,36 @@ export default function AbonnementPage() {
   const [isWelcomeOfferActive, setIsWelcomeOfferActive] = useState(false);
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
 
-  // Gestion du Code de Réduction (ex: FREDDY17 = 100 FCFA)
+  // Gestion du Code de Réduction (Tarif Spécial 100 FCFA)
   const [hasPromoCode, setHasPromoCode] = useState(false);
   const [promoInput, setPromoInput] = useState("");
   const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
+  const [isVerifyingPromo, setIsVerifyingPromo] = useState(false);
 
-  const handleApplyPromo = () => {
+  const handleApplyPromo = async () => {
     const cleanCode = promoInput.trim().toUpperCase();
     if (!cleanCode) {
       toast.error("Veuillez saisir votre code de réduction.");
       return;
     }
-    if (cleanCode === "FREDDY17") {
-      setAppliedPromo("FREDDY17");
-      toast.success("🎉 Code FREDDY17 appliqué ! Tarif spécial : 100 FCFA seulement.");
-    } else {
-      toast.error("Code de réduction invalide.");
+    setIsVerifyingPromo(true);
+    try {
+      const res = await fetch('/api/promo/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: cleanCode })
+      });
+      const data = await res.json();
+      if (res.ok && data.valid) {
+        setAppliedPromo(cleanCode);
+        toast.success("🎉 Code promo appliqué ! Tarif spécial : 100 FCFA.");
+      } else {
+        toast.error(data.error || "Code de réduction invalide.");
+      }
+    } catch {
+      toast.error("Erreur lors de la vérification du code.");
+    } finally {
+      setIsVerifyingPromo(false);
     }
   };
 
@@ -280,14 +294,14 @@ export default function AbonnementPage() {
             </div>
             <h3 className="text-xl font-semibold text-primary">Plan Pro</h3>
             
-            {appliedPromo === 'FREDDY17' ? (
+            {appliedPromo ? (
               <div className="mt-4">
                 <div className="flex items-baseline gap-2">
                   <span className="text-base text-gray-400 line-through font-medium">
                     {isWelcomeOfferActive ? "2 499 FCFA" : "4 999 FCFA"}
                   </span>
                   <span className="text-xs bg-emerald-100 text-emerald-800 font-black px-2 py-0.5 rounded-full border border-emerald-300 animate-pulse">
-                    CODE FREDDY17
+                    RÉDUCTION PRIVILÈGE
                   </span>
                 </div>
                 <div className="flex items-baseline text-4xl font-extrabold text-emerald-600">
@@ -340,7 +354,7 @@ export default function AbonnementPage() {
                         value={promoInput}
                         onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleApplyPromo(); }}
-                        placeholder="Ex: FREDDY17"
+                        placeholder="Entrez votre code"
                         disabled={appliedPromo !== null}
                         className="w-full px-2.5 py-1.5 text-xs uppercase font-mono font-bold tracking-wider rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition disabled:bg-gray-100 disabled:text-gray-500"
                       />
@@ -360,9 +374,10 @@ export default function AbonnementPage() {
                       <button
                         type="button"
                         onClick={handleApplyPromo}
-                        className="px-2.5 py-1.5 text-xs bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-lg transition shadow-sm whitespace-nowrap"
+                        disabled={isVerifyingPromo}
+                        className="px-2.5 py-1.5 text-xs bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-lg transition shadow-sm whitespace-nowrap disabled:opacity-50"
                       >
-                        Appliquer
+                        {isVerifyingPromo ? '...' : 'Appliquer'}
                       </button>
                     )}
                   </div>
@@ -372,7 +387,7 @@ export default function AbonnementPage() {
                     </p>
                   ) : (
                     <p className="text-[11px] text-gray-500">
-                      Entrez votre code pour payer 100 FCFA.
+                      Entrez votre code de réduction.
                     </p>
                   )}
                 </div>
@@ -407,7 +422,7 @@ export default function AbonnementPage() {
                 onClick={() => handleSubscribe('pro')}
                 disabled={isLoading}
                 className={`mt-8 w-full rounded-xl py-3.5 px-4 font-bold text-lg shadow-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
-                  appliedPromo === 'FREDDY17'
+                  appliedPromo
                     ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/25 border border-emerald-400/40'
                     : isWelcomeOfferActive 
                     ? 'bg-gradient-to-r from-[#FF6600] via-[#FF3700] to-[#E60000] text-white hover:opacity-95 shadow-lg shadow-orange-500/25 border border-white/30' 
@@ -416,7 +431,7 @@ export default function AbonnementPage() {
               >
                 {loadingPlan === 'pro' ? (
                   'Initialisation...'
-                ) : appliedPromo === 'FREDDY17' ? (
+                ) : appliedPromo ? (
                   <>
                     <span>Payer mon abonnement</span>
                     <span className="text-xs bg-white/25 text-white px-2 py-0.5 rounded-full font-bold">100 FCFA</span>
@@ -444,14 +459,14 @@ export default function AbonnementPage() {
             )}
             <h3 className="text-xl font-semibold text-gray-900">Plan Elite</h3>
             
-            {appliedPromo === 'FREDDY17' ? (
+            {appliedPromo ? (
               <div className="mt-4">
                 <div className="flex items-baseline gap-2">
                   <span className="text-base text-gray-400 line-through font-medium">
                     {isWelcomeOfferActive ? "7 499 FCFA" : "14 999 FCFA"}
                   </span>
                   <span className="text-xs bg-emerald-100 text-emerald-800 font-black px-2 py-0.5 rounded-full border border-emerald-300 animate-pulse">
-                    CODE FREDDY17
+                    RÉDUCTION PRIVILÈGE
                   </span>
                 </div>
                 <div className="flex items-baseline text-4xl font-extrabold text-emerald-600">
@@ -504,7 +519,7 @@ export default function AbonnementPage() {
                         value={promoInput}
                         onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleApplyPromo(); }}
-                        placeholder="Ex: FREDDY17"
+                        placeholder="Entrez votre code"
                         disabled={appliedPromo !== null}
                         className="w-full px-2.5 py-1.5 text-xs uppercase font-mono font-bold tracking-wider rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition disabled:bg-gray-100 disabled:text-gray-500"
                       />
@@ -524,9 +539,10 @@ export default function AbonnementPage() {
                       <button
                         type="button"
                         onClick={handleApplyPromo}
-                        className="px-2.5 py-1.5 text-xs bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-lg transition shadow-sm whitespace-nowrap"
+                        disabled={isVerifyingPromo}
+                        className="px-2.5 py-1.5 text-xs bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-lg transition shadow-sm whitespace-nowrap disabled:opacity-50"
                       >
-                        Appliquer
+                        {isVerifyingPromo ? '...' : 'Appliquer'}
                       </button>
                     )}
                   </div>
@@ -536,7 +552,7 @@ export default function AbonnementPage() {
                     </p>
                   ) : (
                     <p className="text-[11px] text-gray-500">
-                      Entrez votre code pour payer 100 FCFA.
+                      Entrez votre code de réduction.
                     </p>
                   )}
                 </div>
@@ -571,7 +587,7 @@ export default function AbonnementPage() {
                 onClick={() => handleSubscribe('elite')}
                 disabled={isLoading}
                 className={`mt-8 w-full rounded-xl py-3.5 px-4 font-bold text-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2 ${
-                  appliedPromo === 'FREDDY17'
+                  appliedPromo
                     ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/25 border border-emerald-400/40'
                     : isWelcomeOfferActive 
                     ? 'bg-gradient-to-r from-[#FF6600] via-[#FF3700] to-[#E60000] text-white hover:opacity-95 shadow-lg shadow-orange-500/25 border border-white/30' 
@@ -580,7 +596,7 @@ export default function AbonnementPage() {
               >
                 {loadingPlan === 'elite' ? (
                   'Initialisation...'
-                ) : appliedPromo === 'FREDDY17' ? (
+                ) : appliedPromo ? (
                   <>
                     <span>Payer mon abonnement</span>
                     <span className="text-xs bg-white/25 text-white px-2 py-0.5 rounded-full font-bold">100 FCFA</span>

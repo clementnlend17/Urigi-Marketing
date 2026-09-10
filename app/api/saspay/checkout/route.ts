@@ -44,8 +44,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Configuration serveur incomplète (SasPay)." }, { status: 500 });
     }
 
-    // Vérification du code de réduction spécial (FREDDY17 = 100 FCFA)
-    const isPromoCodeValid = typeof promoCode === 'string' && promoCode.trim().toUpperCase() === 'FREDDY17';
+    // Vérification sécurisée du code de réduction spécial (FREDDY17)
+    const secretPromoCode = process.env.SPECIAL_PROMO_CODE || "FREDDY17";
+    const isPromoCodeValid = typeof promoCode === 'string' && promoCode.trim().toUpperCase() === secretPromoCode.toUpperCase();
 
     // Calcul de l'offre de bienvenue (-50% si inscrit depuis moins de 10 jours)
     const userCreatedAt = new Date(user.created_at).getTime();
@@ -57,8 +58,8 @@ export async function POST(req: Request) {
 
     if (isPromoCodeValid) {
       finalAmount = "100.00";
-      finalDescription = `Abonnement ${plan.name} (Code Réduction FREDDY17 - 100 FCFA) - Urigi Marketing`;
-      discountApplied = "promo_FREDDY17_100fcfa";
+      finalDescription = `Abonnement ${plan.name} (Tarif Spécial - 100 FCFA) - Urigi Marketing`;
+      discountApplied = "promo_100fcfa";
     } else if (isWelcomeOfferActive) {
       finalAmount = plan.discountAmount;
       finalDescription = `Abonnement ${plan.name} (Offre Bienvenue -50%) - Urigi Marketing`;
